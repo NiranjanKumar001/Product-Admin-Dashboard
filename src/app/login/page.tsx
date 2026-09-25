@@ -6,6 +6,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +31,20 @@ export default function LoginPage() {
       setErrorMessage("Password must be at least 4 characters long.");
       return;
     }
+
+    // Indicate loading state for the UI
+    setIsLoading(true);
+
+    // Simulate a brief submission delay for the UI test (API will be connected later)
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }
+
+  // Determine button label using simple if statement
+  let buttonLabel = "Sign in";
+  if (isLoading) {
+    buttonLabel = "Signing in...";
   }
 
   return (
@@ -54,7 +69,6 @@ export default function LoginPage() {
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-
           <div>
             <label
               htmlFor="username"
@@ -65,10 +79,11 @@ export default function LoginPage() {
             <input
               id="username"
               type="text"
+              disabled={isLoading}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="e.g. emilys"
-              className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100 dark:focus:ring-zinc-100"
+              className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 disabled:opacity-60 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100 dark:focus:ring-zinc-100 dark:disabled:bg-zinc-900"
             />
           </div>
 
@@ -82,18 +97,20 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              disabled={isLoading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100 dark:focus:ring-zinc-100"
+              className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 disabled:opacity-60 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100 dark:focus:ring-zinc-100 dark:disabled:bg-zinc-900"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            disabled={isLoading}
+            className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            Sign in
+            {buttonLabel}
           </button>
         </form>
 
@@ -112,3 +129,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
