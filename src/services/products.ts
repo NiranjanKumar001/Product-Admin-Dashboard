@@ -143,4 +143,19 @@ export async function getProductsByCategory(
   return response.data;
 }
 
+// Interface for creating a new product
+export interface NewProductData {
+  title: string;
+  price: number;
+  category: string;
+  stock: number;
+  description: string;
+}
+
+// 6. Add a new product via DummyJSON API (POST /products/add)
+export async function addProduct(productData: NewProductData): Promise<Product> {
+  const response = await api.post("/products/add", productData);
+  return response.data;
+}
+
 

@@ -9,6 +9,7 @@ import {
   searchProducts,
   getCategories,
   getProductsByCategory,
+  addProduct,
   Product,
   ProductCategory,
 } from "@/services/products";
@@ -81,6 +82,114 @@ function ProductsContent() {
 
   // Categories list state
   const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  // Add Product modal & form state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [formTitle, setFormTitle] = useState("");
+  const [formPrice, setFormPrice] = useState("");
+  const [formCategory, setFormCategory] = useState("");
+  const [formStock, setFormStock] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formErrors, setFormErrors] = useState<{
+    title?: string;
+    price?: string;
+    category?: string;
+    stock?: string;
+    description?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formApiError, setFormApiError] = useState("");
+  const [successNotice, setSuccessNotice] = useState("");
+
+  function resetForm() {
+    setFormTitle("");
+    setFormPrice("");
+    setFormCategory("");
+    setFormStock("");
+    setFormDescription("");
+    setFormErrors({});
+    setFormApiError("");
+  }
+
+  function handleOpenAddModal() {
+    resetForm();
+    setIsAddModalOpen(true);
+  }
+
+  function handleCloseAddModal() {
+    if (!isSubmitting) {
+      setIsAddModalOpen(false);
+      resetForm();
+    }
+  }
+
+  async function handleAddProductSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormApiError("");
+
+    // Validate fields with simple if statements
+    const errors: {
+      title?: string;
+      price?: string;
+      category?: string;
+      stock?: string;
+      description?: string;
+    } = {};
+
+    if (!formTitle.trim()) {
+      errors.title = "Title is required.";
+    }
+
+    const parsedPrice = Number(formPrice);
+    if (!formPrice.trim()) {
+      errors.price = "Price is required.";
+    } else if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      errors.price = "Price must be a valid positive number.";
+    }
+
+    if (!formCategory.trim()) {
+      errors.category = "Category is required.";
+    }
+
+    const parsedStock = Number(formStock);
+    if (!formStock.trim()) {
+      errors.stock = "Stock is required.";
+    } else if (Number.isNaN(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedStock)) {
+      errors.stock = "Stock must be a valid non-negative integer.";
+    }
+
+    if (!formDescription.trim()) {
+      errors.description = "Description is required.";
+    }
+
+    setFormErrors(errors);
+
+    // Stop if validation fails
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const newProduct = await addProduct({
+        title: formTitle.trim(),
+        price: parsedPrice,
+        category: formCategory.trim(),
+        stock: parsedStock,
+        description: formDescription.trim(),
+      });
+
+      setSuccessNotice(
+        `Product "${newProduct.title}" added successfully! (Assigned ID: ${newProduct.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
+      );
+      setIsAddModalOpen(false);
+      resetForm();
+    } catch {
+      setFormApiError("Failed to add product. Please check your network and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   // 1. Read category from URL
   const selectedCategory = searchParams.get("category") || "";
@@ -567,14 +676,37 @@ function ProductsContent() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            + Add Product
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+          >
+            Logout
+          </button>
+        </div>
       </div>
+
+      {/* Success Notification Banner */}
+      {successNotice ? (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <span>{successNotice}</span>
+          <button
+            type="button"
+            onClick={() => setSuccessNotice("")}
+            className="ml-4 text-xs font-semibold hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {/* Search and Category Filter Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -674,6 +806,152 @@ function ProductsContent() {
       ) : null}
 
       {content}
+
+      {/* Add Product Modal */}
+      {isAddModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                Add New Product
+              </h2>
+              <button
+                type="button"
+                onClick={handleCloseAddModal}
+                disabled={isSubmitting}
+                className="text-zinc-400 hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            {formApiError ? (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                {formApiError}
+              </div>
+            ) : null}
+
+            <form onSubmit={handleAddProductSubmit} className="mt-4 space-y-4">
+              {/* Title */}
+              <div>
+                <label htmlFor="add-title" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Title *
+                </label>
+                <input
+                  id="add-title"
+                  type="text"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  placeholder="e.g. Wireless Noise-Cancelling Headphones"
+                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                />
+                {formErrors.title ? (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.title}</p>
+                ) : null}
+              </div>
+
+              {/* Price & Stock Row */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="add-price" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Price ($) *
+                  </label>
+                  <input
+                    id="add-price"
+                    type="number"
+                    step="0.01"
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(e.target.value)}
+                    placeholder="e.g. 29.99"
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  />
+                  {formErrors.price ? (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.price}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor="add-stock" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Stock Units *
+                  </label>
+                  <input
+                    id="add-stock"
+                    type="number"
+                    step="1"
+                    value={formStock}
+                    onChange={(e) => setFormStock(e.target.value)}
+                    placeholder="e.g. 50"
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  />
+                  {formErrors.stock ? (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.stock}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label htmlFor="add-category" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Category *
+                </label>
+                <select
+                  id="add-category"
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.category ? (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.category}</p>
+                ) : null}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="add-description" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Description *
+                </label>
+                <textarea
+                  id="add-description"
+                  rows={3}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="Provide a detailed description of the product..."
+                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                />
+                {formErrors.description ? (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.description}</p>
+                ) : null}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={handleCloseAddModal}
+                  disabled={isSubmitting}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  {isSubmitting ? "Saving..." : "Save Product"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
