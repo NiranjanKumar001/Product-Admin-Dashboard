@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getProducts, Product } from "@/services/products";
 
-export default function ProductsPage() {
+function ProductsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -13,23 +16,35 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  // Pagination state
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // 1. Read and safely parse 'page' from the URL
+  const rawPage = searchParams.get("page");
+  let page = Number(rawPage);
+
+  // If page is not a number, 0, or negative, fall back to page 1
+  if (!rawPage || Number.isNaN(page) || page < 1) {
+    page = 1;
+  }
+
+  // 2. Read and safely parse 'limit' from the URL
+  const rawLimit = searchParams.get("limit");
+  let limit = Number(rawLimit);
+
+  // Only permit 10, 20, or 50. Fall back to 10 for any other value.
+  if (limit !== 10 && limit !== 20 && limit !== 50) {
+    limit = 10;
+  }
+
+  // Verify authentication on mount
   useEffect(() => {
-    // Check if the user has an authentication token in localStorage
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
 
-    // If no token is found, redirect to the login page
     if (!token) {
       router.push("/login");
       return;
     }
 
-    // If token exists, allow access to the products page
     const timer = setTimeout(() => {
       setIsAuthenticated(true);
       setIsCheckingAuth(false);
@@ -38,8 +53,8 @@ export default function ProductsPage() {
     return () => clearTimeout(timer);
   }, [router]);
 
+  // Fetch products whenever auth is confirmed or URL parameters (page/limit) change
   useEffect(() => {
-    // Only fetch products after the user has been authenticated
     if (!isAuthenticated) {
       return;
     }
@@ -49,7 +64,6 @@ export default function ProductsPage() {
       setErrorMessage("");
 
       try {
-        // Calculate how many items to skip based on current page and limit
         const calculatedSkip = (page - 1) * limit;
         const data = await getProducts(limit, calculatedSkip);
         setProducts(data.products);
@@ -64,7 +78,7 @@ export default function ProductsPage() {
     loadProducts();
   }, [isAuthenticated, page, limit]);
 
-  // While checking if a token exists, display a simple loading message
+  // While checking authentication, show a simple loading message
   if (isCheckingAuth) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -81,16 +95,21 @@ export default function ProductsPage() {
   }
 
   function handleLogout() {
-    // Remove saved authentication data
     localStorage.removeItem("accessToken");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
-    // Redirect to the login page
     router.push("/login");
   }
 
-  // Pagination navigation helpers
+  // Helper function to update page and limit query parameters in the URL
+  function updateUrl(newPage: number, newLimit: number) {
+    const params = new URLSearchParams();
+    params.set("page", String(newPage));
+    params.set("limit", String(newLimit));
+    router.push(`/products?${params.toString()}`);
+  }
+
+  // Calculate total pages safely
   let totalPages = Math.ceil(total / limit);
   if (totalPages < 1) {
     totalPages = 1;
@@ -98,27 +117,27 @@ export default function ProductsPage() {
 
   function handlePrevPage() {
     if (page > 1) {
-      setPage(page - 1);
+      updateUrl(page - 1, limit);
     }
   }
 
   function handleNextPage() {
     if (page < totalPages) {
-      setPage(page + 1);
+      updateUrl(page + 1, limit);
     }
   }
 
   function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1); // Return to page 1 when page size changes
+    // When the page size changes, always go back to page 1
+    updateUrl(1, newLimit);
   }
 
-  // Calculate "Showing X–Y of Z" values
+  // Calculate "Showing X–Y of Z" values safely
   const currentSkip = (page - 1) * limit;
   let startItem = 0;
   let endItem = 0;
 
-  if (total > 0) {
+  if (total > 0 && products.length > 0) {
     startItem = currentSkip + 1;
     endItem = currentSkip + products.length;
     if (endItem > total) {
@@ -126,7 +145,7 @@ export default function ProductsPage() {
     }
   }
 
-  // Determine what to display using normal if statements
+  // Determine table content using normal if statements
   let content = null;
 
   if (isLoadingProducts) {
@@ -157,33 +176,41 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
-                  <td className="px-6 py-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={product.thumbnail}
-                      alt={product.title}
-                      className="h-12 w-12 rounded-lg object-cover bg-zinc-100 dark:bg-zinc-800"
-                    />
-                  </td>
-                  <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                    {product.title}
-                  </td>
-                  <td className="px-6 py-4 capitalize">
-                    {product.category}
-                  </td>
-                  <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                    ${product.price}
-                  </td>
-                  <td className="px-6 py-4">
-                    ⭐ {product.rating}
-                  </td>
-                  <td className="px-6 py-4">
-                    {product.stock}
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                    No products found for this page.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                products.map((product) => (
+                  <tr key={product.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                    <td className="px-6 py-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.thumbnail}
+                        alt={product.title}
+                        className="h-12 w-12 rounded-lg object-cover bg-zinc-100 dark:bg-zinc-800"
+                      />
+                    </td>
+                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
+                      {product.title}
+                    </td>
+                    <td className="px-6 py-4 capitalize">
+                      {product.category}
+                    </td>
+                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
+                      ${product.price}
+                    </td>
+                    <td className="px-6 py-4">
+                      ⭐ {product.rating}
+                    </td>
+                    <td className="px-6 py-4">
+                      {product.stock}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -262,5 +289,19 @@ export default function ProductsPage() {
 
       {content}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading products...</p>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
