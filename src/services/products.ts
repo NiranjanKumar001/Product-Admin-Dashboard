@@ -22,17 +22,26 @@ export interface ProductsResponse {
   limit: number;
 }
 
-// 1. Get a paginated list of products from DummyJSON
+// 1. Get a paginated list of products from DummyJSON with optional sorting
 export async function getProducts(
   limit = 10,
   skip = 0,
+  sortBy?: string,
+  order?: string,
   signal?: AbortSignal
 ): Promise<ProductsResponse> {
+  const params: Record<string, string | number> = {
+    limit: limit,
+    skip: skip,
+  };
+
+  if (sortBy) {
+    params.sortBy = sortBy;
+    params.order = order || "asc";
+  }
+
   const response = await api.get("/products", {
-    params: {
-      limit: limit,
-      skip: skip,
-    },
+    params: params,
     signal: signal,
   });
   return response.data;
@@ -49,19 +58,28 @@ export async function getProductById(
   return response.data;
 }
 
-// 3. Search products by query string with limit and skip from DummyJSON
+// 3. Search products by query string with limit, skip, and optional sorting from DummyJSON
 export async function searchProducts(
   query: string,
   limit = 10,
   skip = 0,
+  sortBy?: string,
+  order?: string,
   signal?: AbortSignal
 ): Promise<ProductsResponse> {
+  const params: Record<string, string | number> = {
+    q: query,
+    limit: limit,
+    skip: skip,
+  };
+
+  if (sortBy) {
+    params.sortBy = sortBy;
+    params.order = order || "asc";
+  }
+
   const response = await api.get("/products/search", {
-    params: {
-      q: query,
-      limit: limit,
-      skip: skip,
-    },
+    params: params,
     signal: signal,
   });
   return response.data;
@@ -84,18 +102,27 @@ export async function getCategories(): Promise<ProductCategory[]> {
   });
 }
 
-// 5. Get products filtered by category from DummyJSON
+// 5. Get products filtered by category with optional sorting from DummyJSON
 export async function getProductsByCategory(
   category: string,
   limit = 10,
   skip = 0,
+  sortBy?: string,
+  order?: string,
   signal?: AbortSignal
 ): Promise<ProductsResponse> {
+  const params: Record<string, string | number> = {
+    limit: limit,
+    skip: skip,
+  };
+
+  if (sortBy) {
+    params.sortBy = sortBy;
+    params.order = order || "asc";
+  }
+
   const response = await api.get(`/products/category/${category}`, {
-    params: {
-      limit: limit,
-      skip: skip,
-    },
+    params: params,
     signal: signal,
   });
   return response.data;

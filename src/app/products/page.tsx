@@ -113,12 +113,27 @@ function ProductsContent() {
     limit = 10;
   }
 
-  // Helper function to update search query, category, page, and limit in the URL
+  // 5. Read and safely parse 'sort' and 'order' from the URL
+  const rawSort = searchParams.get("sort") || "";
+  let sortField = "";
+  if (rawSort === "price" || rawSort === "rating" || rawSort === "title") {
+    sortField = rawSort;
+  }
+
+  const rawOrder = searchParams.get("order") || "asc";
+  let sortOrder = "asc";
+  if (rawOrder === "desc") {
+    sortOrder = "desc";
+  }
+
+  // Helper function to update search query, category, sort, order, page, and limit in the URL
   function updateUrl(
     newPage: number,
     newLimit: number,
     newQuery: string = searchQuery,
-    newCategory: string = selectedCategory
+    newCategory: string = selectedCategory,
+    newSort: string = sortField,
+    newOrder: string = sortOrder
   ) {
     const params = new URLSearchParams();
     if (newQuery) {
@@ -126,6 +141,10 @@ function ProductsContent() {
     }
     if (newCategory) {
       params.set("category", newCategory);
+    }
+    if (newSort) {
+      params.set("sort", newSort);
+      params.set("order", newOrder);
     }
     params.set("page", String(newPage));
     params.set("limit", String(newLimit));
@@ -150,6 +169,10 @@ function ProductsContent() {
       if (selectedCategory) {
         params.set("category", selectedCategory);
       }
+      if (sortField) {
+        params.set("sort", sortField);
+        params.set("order", sortOrder);
+      }
       // When the search query changes, always reset to page 1
       params.set("page", "1");
       params.set("limit", String(limit));
@@ -161,7 +184,7 @@ function ProductsContent() {
     return () => {
       clearTimeout(timer);
     };
-  }, [searchInput, searchQuery, selectedCategory, limit, router]);
+  }, [searchInput, searchQuery, selectedCategory, sortField, sortOrder, limit, router]);
 
   // Verify authentication on mount
   useEffect(() => {
@@ -222,6 +245,8 @@ function ProductsContent() {
             selectedCategory,
             limit,
             calculatedSkip,
+            sortField || undefined,
+            sortField ? sortOrder : undefined,
             controller.signal
           );
         } else if (searchQuery.trim() !== "") {
@@ -230,11 +255,19 @@ function ProductsContent() {
             searchQuery.trim(),
             limit,
             calculatedSkip,
+            sortField || undefined,
+            sortField ? sortOrder : undefined,
             controller.signal
           );
         } else {
           // 3. Otherwise, fetch standard paginated products
-          data = await getProducts(limit, calculatedSkip, controller.signal);
+          data = await getProducts(
+            limit,
+            calculatedSkip,
+            sortField || undefined,
+            sortField ? sortOrder : undefined,
+            controller.signal
+          );
         }
 
         setProducts(data.products);
@@ -260,7 +293,7 @@ function ProductsContent() {
     return () => {
       controller.abort();
     };
-  }, [isAuthenticated, page, limit, searchQuery, selectedCategory]);
+  }, [isAuthenticated, page, limit, searchQuery, selectedCategory, sortField, sortOrder]);
 
   // While checking authentication, show a simple loading message
   if (isCheckingAuth) {
@@ -289,19 +322,32 @@ function ProductsContent() {
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     // When search changes, always go back to page 1
-    updateUrl(1, limit, searchInput.trim(), selectedCategory);
+    updateUrl(1, limit, searchInput.trim(), selectedCategory, sortField, sortOrder);
   }
 
   function handleClearSearch() {
     setSearchInput("");
-    updateUrl(1, limit, "", selectedCategory);
+    updateUrl(1, limit, "", selectedCategory, sortField, sortOrder);
   }
 
   // Category change handler
   function handleCategoryChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newCategory = e.target.value;
     // When category changes, always go back to page 1
-    updateUrl(1, limit, searchQuery, newCategory);
+    updateUrl(1, limit, searchQuery, newCategory, sortField, sortOrder);
+  }
+
+  // Sort field and order handlers
+  function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newSort = e.target.value;
+    // When sorting field changes, reset to page 1
+    updateUrl(1, limit, searchQuery, selectedCategory, newSort, sortOrder);
+  }
+
+  function handleOrderChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newOrder = e.target.value;
+    // When sort order changes, reset to page 1
+    updateUrl(1, limit, searchQuery, selectedCategory, sortField, newOrder);
   }
 
   // Calculate total pages safely
@@ -312,19 +358,19 @@ function ProductsContent() {
 
   function handlePrevPage() {
     if (page > 1) {
-      updateUrl(page - 1, limit, searchQuery, selectedCategory);
+      updateUrl(page - 1, limit, searchQuery, selectedCategory, sortField, sortOrder);
     }
   }
 
   function handleNextPage() {
     if (page < totalPages) {
-      updateUrl(page + 1, limit, searchQuery, selectedCategory);
+      updateUrl(page + 1, limit, searchQuery, selectedCategory, sortField, sortOrder);
     }
   }
 
   function handleLimitChange(newLimit: number) {
     // When the page size changes, always go back to page 1
-    updateUrl(1, newLimit, searchQuery, selectedCategory);
+    updateUrl(1, newLimit, searchQuery, selectedCategory, sortField, sortOrder);
   }
 
   // Calculate "Showing X–Y of Z" values safely
@@ -472,7 +518,7 @@ function ProductsContent() {
                   key={item}
                   type="button"
                   disabled={isLoadingProducts}
-                  onClick={() => updateUrl(item, limit, searchQuery, selectedCategory)}
+                  onClick={() => updateUrl(item, limit, searchQuery, selectedCategory, sortField, sortOrder)}
                   className={buttonStyle}
                 >
                   {item}
@@ -545,24 +591,62 @@ function ProductsContent() {
           ) : null}
         </form>
 
-        {/* Category Dropdown */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="category-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Category:
-          </label>
-          <select
-            id="category-select"
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.slug} value={cat.slug}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+        {/* Category and Sort Controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Category Dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="category-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Category:
+            </label>
+            <select
+              id="category-select"
+              value={selectedCategory}
+              onChange={handleCategoryChange}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.slug} value={cat.slug}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort Field Dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="sort-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Sort by:
+            </label>
+            <select
+              id="sort-select"
+              value={sortField}
+              onChange={handleSortChange}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            >
+              <option value="">Default</option>
+              <option value="price">Price</option>
+              <option value="rating">Rating</option>
+              <option value="title">Title</option>
+            </select>
+          </div>
+
+          {/* Sort Order Dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="order-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Order:
+            </label>
+            <select
+              id="order-select"
+              value={sortOrder}
+              onChange={handleOrderChange}
+              disabled={!sortField}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
         </div>
       </div>
 
