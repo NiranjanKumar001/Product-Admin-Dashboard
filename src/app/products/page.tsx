@@ -179,8 +179,25 @@ function ProductsContent() {
         description: formDescription.trim(),
       });
 
+      const productToAdd: Product = {
+        id: newProduct.id,
+        title: newProduct.title || formTitle.trim(),
+        price: newProduct.price !== undefined ? newProduct.price : parsedPrice,
+        category: newProduct.category || formCategory.trim(),
+        stock: newProduct.stock !== undefined ? newProduct.stock : parsedStock,
+        description: newProduct.description || formDescription.trim(),
+        rating: 5.0,
+        thumbnail:
+          newProduct.thumbnail ||
+          "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
+      };
+
+      // Update local UI state so the new product immediately appears in the list
+      setProducts((prev) => [productToAdd, ...prev]);
+      setTotal((prev) => prev + 1);
+
       setSuccessNotice(
-        `Product "${newProduct.title}" added successfully! (Assigned ID: ${newProduct.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
+        `Product "${productToAdd.title}" added successfully! (Assigned ID: ${productToAdd.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
       );
       setIsAddModalOpen(false);
       resetForm();
