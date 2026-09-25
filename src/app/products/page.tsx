@@ -11,6 +11,7 @@ import {
   getProductsByCategory,
   addProduct,
   updateProduct,
+  deleteProduct,
   Product,
   ProductCategory,
 } from "@/services/products";
@@ -135,6 +136,49 @@ function ProductsContent() {
     if (!isSubmitting) {
       setIsAddModalOpen(false);
       resetForm();
+    }
+  }
+
+  // Delete Product confirmation modal state
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteApiError, setDeleteApiError] = useState("");
+
+  function handleOpenDeleteModal(product: Product) {
+    setProductToDelete(product);
+    setDeleteApiError("");
+  }
+
+  function handleCloseDeleteModal() {
+    if (!isDeleting) {
+      setProductToDelete(null);
+      setDeleteApiError("");
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!productToDelete || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteApiError("");
+
+    try {
+      await deleteProduct(productToDelete.id);
+
+      // Remove product from local UI state
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+
+      setSuccessNotice(
+        `Product "${productToDelete.title}" deleted successfully! Note: DummyJSON is a mock API, changes are simulated in-memory.`
+      );
+      setProductToDelete(null);
+    } catch {
+      setDeleteApiError("Failed to delete product. Please check your network and try again.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -654,6 +698,13 @@ function ProductsContent() {
                         >
                           Edit
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeleteModal(product)}
+                          className="inline-flex items-center rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1029,6 +1080,45 @@ function ProductsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Delete Confirmation Modal */}
+      {productToDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Delete Product
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Are you sure you want to delete <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{productToDelete.title}&quot;</span>? This will remove it from the list.
+            </p>
+
+            {deleteApiError ? (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                {deleteApiError}
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeleting}
+                className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
+              >
+                {isDeleting ? "Deleting..." : "Delete Product"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
