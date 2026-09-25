@@ -101,7 +101,7 @@ export default function LoginPage() {
         ) : null}
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <div>
             <label
               htmlFor="username"
@@ -112,6 +112,7 @@ export default function LoginPage() {
             <input
               id="username"
               type="text"
+              autoComplete="off"
               disabled={isLoading}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -130,6 +131,8 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              autoComplete="new-password"
+              data-lpignore="true"
               disabled={isLoading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
