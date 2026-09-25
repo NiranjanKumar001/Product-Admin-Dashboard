@@ -34,6 +34,11 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // If the request was cancelled deliberately, ignore logging and forward the cancellation
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
     // Basic centralized error handling
     if (error.response) {
       const status = error.response.status;

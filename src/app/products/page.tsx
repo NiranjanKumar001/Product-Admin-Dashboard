@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import axios from "axios";
 import { getProducts, searchProducts, Product } from "@/services/products";
+
 
 // Helper function to calculate which page numbers should be visible
 function getVisiblePages(currentPage: number, totalPages: number) {
@@ -161,6 +163,9 @@ function ProductsContent() {
       return;
     }
 
+    // Create an AbortController to cancel this request if a new search or page change occurs
+    const controller = new AbortController();
+
     async function loadProducts() {
       setIsLoadingProducts(true);
       setErrorMessage("");
@@ -171,21 +176,35 @@ function ProductsContent() {
 
         // If a search query is present, use searchProducts; otherwise, use regular getProducts
         if (searchQuery.trim() !== "") {
-          data = await searchProducts(searchQuery.trim(), limit, calculatedSkip);
+          data = await searchProducts(searchQuery.trim(), limit, calculatedSkip, controller.signal);
         } else {
-          data = await getProducts(limit, calculatedSkip);
+          data = await getProducts(limit, calculatedSkip, controller.signal);
         }
 
         setProducts(data.products);
         setTotal(data.total);
-      } catch {
+      } catch (err) {
+        // If the previous request was deliberately cancelled by us, do not show an error message
+        if (axios.isCancel(err)) {
+          return;
+        }
+
         setErrorMessage("Failed to load products. Please try again.");
       } finally {
-        setIsLoadingProducts(false);
+        // Only clear loading state if this request was not aborted by a newer one
+        if (!controller.signal.aborted) {
+          setIsLoadingProducts(false);
+        }
       }
     }
 
     loadProducts();
+
+    // Cleanup: cancel the pending request when dependencies change (e.g. user types a new search term)
+    // This prevents race conditions where an older, slower request overwrites newer results.
+    return () => {
+      controller.abort();
+    };
   }, [isAuthenticated, page, limit, searchQuery]);
 
   // While checking authentication, show a simple loading message

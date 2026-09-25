@@ -23,19 +23,29 @@ export interface ProductsResponse {
 }
 
 // 1. Get a paginated list of products from DummyJSON
-export async function getProducts(limit = 10, skip = 0): Promise<ProductsResponse> {
+export async function getProducts(
+  limit = 10,
+  skip = 0,
+  signal?: AbortSignal
+): Promise<ProductsResponse> {
   const response = await api.get("/products", {
     params: {
       limit: limit,
       skip: skip,
     },
+    signal: signal,
   });
   return response.data;
 }
 
 // 2. Get a single product by ID from DummyJSON
-export async function getProductById(id: number | string): Promise<Product> {
-  const response = await api.get(`/products/${id}`);
+export async function getProductById(
+  id: number | string,
+  signal?: AbortSignal
+): Promise<Product> {
+  const response = await api.get(`/products/${id}`, {
+    signal: signal,
+  });
   return response.data;
 }
 
@@ -43,7 +53,8 @@ export async function getProductById(id: number | string): Promise<Product> {
 export async function searchProducts(
   query: string,
   limit = 10,
-  skip = 0
+  skip = 0,
+  signal?: AbortSignal
 ): Promise<ProductsResponse> {
   const response = await api.get("/products/search", {
     params: {
@@ -51,6 +62,7 @@ export async function searchProducts(
       limit: limit,
       skip: skip,
     },
+    signal: signal,
   });
   return response.data;
 }
