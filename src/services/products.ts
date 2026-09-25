@@ -158,4 +158,30 @@ export async function addProduct(productData: NewProductData): Promise<Product> 
   return response.data;
 }
 
+// Interface for updating an existing product
+export interface UpdateProductData {
+  title?: string;
+  price?: number;
+  category?: string;
+  stock?: number;
+  description?: string;
+}
+
+// 7. Update an existing product via DummyJSON API (PUT /products/:id)
+export async function updateProduct(
+  id: number | string,
+  productData: UpdateProductData
+): Promise<Product> {
+  const response = await api.put(`/products/${id}`, productData);
+  return response.data;
+}
+
+// 8. Delete a product via DummyJSON API (DELETE /products/:id)
+export async function deleteProduct(
+  id: number | string
+): Promise<{ id: number; isDeleted: boolean }> {
+  const response = await api.delete(`/products/${id}`);
+  return response.data;
+}
+
 
