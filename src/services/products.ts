@@ -1,5 +1,14 @@
 import api from "@/lib/api";
 
+// Interface representing a product customer review
+export interface Review {
+  rating: number;
+  comment: string;
+  date: string;
+  reviewerName: string;
+  reviewerEmail?: string;
+}
+
 // Simple interface representing a product
 export interface Product {
   id: number;
@@ -12,6 +21,12 @@ export interface Product {
   stock: number;
   brand?: string;
   thumbnail: string;
+  images?: string[];
+  reviews?: Review[];
+  warrantyInformation?: string;
+  shippingInformation?: string;
+  availabilityStatus?: string;
+  returnPolicy?: string;
 }
 
 // Interface representing the paginated response from /products

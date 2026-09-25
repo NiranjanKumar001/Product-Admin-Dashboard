@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
 import {
   getProducts,
@@ -438,7 +439,12 @@ function ProductsContent() {
                       />
                     </td>
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                      {product.title}
+                      <Link
+                        href={`/products/${product.id}`}
+                        className="hover:underline hover:text-blue-600 dark:hover:text-blue-400"
+                      >
+                        {product.title}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 capitalize">
                       {product.category}
