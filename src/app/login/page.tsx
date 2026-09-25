@@ -1,15 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { loginUser } from "@/services/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Prevent duplicate requests if already loading
+    if (isLoading) {
+      return;
+    }
 
     // Reset previous error message before validating
     setErrorMessage("");
@@ -26,20 +35,37 @@ export default function LoginPage() {
       return;
     }
 
-    // Validation rule 3: Password minimum length
-    if (password.length < 4) {
-      setErrorMessage("Password must be at least 4 characters long.");
-      return;
-    }
-
-    // Indicate loading state for the UI
+    // Set loading state to true
     setIsLoading(true);
 
-    // Simulate a brief submission delay for the UI test (API will be connected later)
-    setTimeout(() => {
+    try {
+      // Call the separated API service
+      const authData = await loginUser({
+        username: username.trim(),
+        password: password,
+      });
+
+      // Temporarily store authentication information in localStorage
+      const token = authData.accessToken || authData.token;
+      if (token) {
+        localStorage.setItem("accessToken", token);
+      }
+      localStorage.setItem("user", JSON.stringify(authData));
+
+      // Redirect user to the products page
+      router.push("/products");
+    } catch (error: any) {
+      // Extract error message from server response if available
+      if (error.response && error.response.data && error.response.data.message) {
+        setErrorMessage(error.response.data.message);
+      } else {
+        setErrorMessage("Invalid credentials or network error. Please try again.");
+      }
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   }
+
 
   // Determine button label using simple if statement
   let buttonLabel = "Sign in";

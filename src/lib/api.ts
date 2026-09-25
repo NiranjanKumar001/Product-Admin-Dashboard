@@ -11,15 +11,13 @@ const api = axios.create({
 // Request interceptor: runs before every outgoing request
 api.interceptors.request.use(
   (config) => {
-    // Basic placeholder structure for authentication:
-    // Once login is implemented, we will read the saved token and attach it here.
-    // Example:
-    // if (typeof window !== "undefined") {
-    //   const token = localStorage.getItem("authToken");
-    //   if (token) {
-    //     config.headers.Authorization = `Bearer ${token}`;
-    //   }
-    // }
+    // If in the browser, attach auth token if available
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
 
     return config;
   },
