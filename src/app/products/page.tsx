@@ -144,6 +144,13 @@ function ProductsContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteApiError, setDeleteApiError] = useState("");
 
+  // Retry trigger for reload without full browser reload
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
+  function handleRetry() {
+    setRetryTrigger((prev) => prev + 1);
+  }
+
   function handleOpenDeleteModal(product: Product) {
     setProductToDelete(product);
     setDeleteApiError("");
@@ -518,7 +525,7 @@ function ProductsContent() {
     return () => {
       controller.abort();
     };
-  }, [isAuthenticated, page, limit, searchQuery, selectedCategory, sortField, sortOrder]);
+  }, [isAuthenticated, page, limit, searchQuery, selectedCategory, sortField, sortOrder, retryTrigger]);
 
   // While checking authentication, show a simple loading message
   if (isCheckingAuth) {
@@ -617,22 +624,40 @@ function ProductsContent() {
   // Determine table content using normal if statements
   let content = null;
 
+  // Specific empty state message depending on current filter
+  let emptyMessage = "No products found.";
+  if (searchQuery) {
+    emptyMessage = `No products found matching "${searchQuery}".`;
+  } else if (selectedCategory && selectedCategory !== "all") {
+    emptyMessage = `No products found in category "${selectedCategory}".`;
+  }
+
   if (isLoadingProducts) {
     content = (
       <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        Loading products...
+        {searchQuery ? "Searching products..." : "Loading products..."}
       </div>
     );
   } else if (errorMessage) {
     content = (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-        {errorMessage}
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 shadow-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+        <p className="font-medium">{errorMessage}</p>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="inline-flex items-center rounded-lg border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-zinc-800"
+          >
+            ↻ Retry
+          </button>
+        </div>
       </div>
     );
   } else {
     content = (
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View (hidden on mobile, visible on md and larger) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400">
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase text-zinc-700 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
               <tr>
@@ -649,7 +674,7 @@ function ProductsContent() {
               {products.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">
-                    No products found.
+                    {emptyMessage}
                   </td>
                 </tr>
               ) : (
@@ -712,6 +737,69 @@ function ProductsContent() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View (visible on mobile, hidden on md and larger) */}
+        <div className="block md:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
+          {products.length === 0 ? (
+            <div className="p-8 text-center text-sm text-zinc-500">
+              {emptyMessage}
+            </div>
+          ) : (
+            products.map((product) => (
+              <div key={product.id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={product.thumbnail}
+                    alt={product.title}
+                    className="h-16 w-16 flex-shrink-0 rounded-lg object-cover bg-zinc-100 dark:bg-zinc-800"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="font-medium text-sm text-zinc-900 dark:text-zinc-100 hover:underline line-clamp-1"
+                    >
+                      {product.title}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="capitalize">{product.category}</span>
+                      <span>•</span>
+                      <span>⭐ {product.rating}</span>
+                      <span>•</span>
+                      <span>Stock: {product.stock}</span>
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      ${product.price}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
+                  <Link
+                    href={`/products/${product.id}`}
+                    className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                  >
+                    View
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(product)}
+                    className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDeleteModal(product)}
+                    className="inline-flex items-center rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Pagination controls footer */}
