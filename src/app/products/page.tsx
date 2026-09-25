@@ -10,6 +10,7 @@ import {
   getCategories,
   getProductsByCategory,
   addProduct,
+  updateProduct,
   Product,
   ProductCategory,
 } from "@/services/products";
@@ -83,8 +84,9 @@ function ProductsContent() {
   // Categories list state
   const [categories, setCategories] = useState<ProductCategory[]>([]);
 
-  // Add Product modal & form state
+  // Add/Edit Product modal & form state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTitle, setFormTitle] = useState("");
   const [formPrice, setFormPrice] = useState("");
   const [formCategory, setFormCategory] = useState("");
@@ -102,6 +104,7 @@ function ProductsContent() {
   const [successNotice, setSuccessNotice] = useState("");
 
   function resetForm() {
+    setEditingProduct(null);
     setFormTitle("");
     setFormPrice("");
     setFormCategory("");
@@ -113,6 +116,18 @@ function ProductsContent() {
 
   function handleOpenAddModal() {
     resetForm();
+    setIsAddModalOpen(true);
+  }
+
+  function handleOpenEditModal(product: Product) {
+    setEditingProduct(product);
+    setFormTitle(product.title);
+    setFormPrice(String(product.price));
+    setFormCategory(product.category);
+    setFormStock(String(product.stock));
+    setFormDescription(product.description || "");
+    setFormErrors({});
+    setFormApiError("");
     setIsAddModalOpen(true);
   }
 
@@ -171,38 +186,77 @@ function ProductsContent() {
 
     setIsSubmitting(true);
     try {
-      const newProduct = await addProduct({
-        title: formTitle.trim(),
-        price: parsedPrice,
-        category: formCategory.trim(),
-        stock: parsedStock,
-        description: formDescription.trim(),
-      });
+      if (editingProduct) {
+        // Edit existing product via PUT /products/:id
+        const updated = await updateProduct(editingProduct.id, {
+          title: formTitle.trim(),
+          price: parsedPrice,
+          category: formCategory.trim(),
+          stock: parsedStock,
+          description: formDescription.trim(),
+        });
 
-      const productToAdd: Product = {
-        id: newProduct.id,
-        title: newProduct.title || formTitle.trim(),
-        price: newProduct.price !== undefined ? newProduct.price : parsedPrice,
-        category: newProduct.category || formCategory.trim(),
-        stock: newProduct.stock !== undefined ? newProduct.stock : parsedStock,
-        description: newProduct.description || formDescription.trim(),
-        rating: 5.0,
-        thumbnail:
-          newProduct.thumbnail ||
-          "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
-      };
+        // Update local UI state
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id === editingProduct.id) {
+              return {
+                ...p,
+                ...updated,
+                title: formTitle.trim(),
+                price: parsedPrice,
+                category: formCategory.trim(),
+                stock: parsedStock,
+                description: formDescription.trim(),
+              };
+            }
+            return p;
+          })
+        );
 
-      // Update local UI state so the new product immediately appears in the list
-      setProducts((prev) => [productToAdd, ...prev]);
-      setTotal((prev) => prev + 1);
+        setSuccessNotice(
+          `Product "${formTitle.trim()}" updated successfully! Note: DummyJSON is a mock API, changes are simulated in-memory.`
+        );
+      } else {
+        // Add new product via POST /products/add
+        const newProduct = await addProduct({
+          title: formTitle.trim(),
+          price: parsedPrice,
+          category: formCategory.trim(),
+          stock: parsedStock,
+          description: formDescription.trim(),
+        });
 
-      setSuccessNotice(
-        `Product "${productToAdd.title}" added successfully! (Assigned ID: ${productToAdd.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
-      );
+        const productToAdd: Product = {
+          id: newProduct.id,
+          title: newProduct.title || formTitle.trim(),
+          price: newProduct.price !== undefined ? newProduct.price : parsedPrice,
+          category: newProduct.category || formCategory.trim(),
+          stock: newProduct.stock !== undefined ? newProduct.stock : parsedStock,
+          description: newProduct.description || formDescription.trim(),
+          rating: 5.0,
+          thumbnail:
+            newProduct.thumbnail ||
+            "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
+        };
+
+        // Update local UI state so the new product immediately appears in the list
+        setProducts((prev) => [productToAdd, ...prev]);
+        setTotal((prev) => prev + 1);
+
+        setSuccessNotice(
+          `Product "${productToAdd.title}" added successfully! (Assigned ID: ${productToAdd.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
+        );
+      }
+
       setIsAddModalOpen(false);
       resetForm();
     } catch {
-      setFormApiError("Failed to add product. Please check your network and try again.");
+      if (editingProduct) {
+        setFormApiError("Failed to update product. Please check your network and try again.");
+      } else {
+        setFormApiError("Failed to add product. Please check your network and try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -586,12 +640,21 @@ function ProductsContent() {
                       {product.stock}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/products/${product.id}`}
-                        className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                      >
-                        View
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/products/${product.id}`}
+                          className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                        >
+                          View
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(product)}
+                          className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-700"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -830,7 +893,7 @@ function ProductsContent() {
           <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                Add New Product
+                {editingProduct ? "Edit Product" : "Add New Product"}
               </h2>
               <button
                 type="button"
@@ -962,7 +1025,7 @@ function ProductsContent() {
                   disabled={isSubmitting}
                   className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
-                  {isSubmitting ? "Saving..." : "Save Product"}
+                  {isSubmitting ? "Saving..." : editingProduct ? "Update Product" : "Save Product"}
                 </button>
               </div>
             </form>
