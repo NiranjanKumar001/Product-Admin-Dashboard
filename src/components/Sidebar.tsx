@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ username?: string; firstName?: string; image?: string } | null>(null);
+  const [user, setUser] = useState<{
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    image?: string;
+  } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profilePopoverOpen, setProfilePopoverOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -24,6 +32,21 @@ export default function Sidebar() {
     return () => clearTimeout(timer);
   }, [pathname]);
 
+  // Close profile popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setProfilePopoverOpen(false);
+      }
+    }
+    if (profilePopoverOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profilePopoverOpen]);
+
   function handleLogout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("token");
@@ -38,6 +61,10 @@ export default function Sidebar() {
 
   const isProductsActive = pathname.startsWith("/products");
   const isHomeActive = pathname === "/";
+
+  const fullName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ""}`.trim()
+    : "Emily Johnson";
 
   return (
     <>
@@ -68,7 +95,7 @@ export default function Sidebar() {
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 top-[57px] bg-slate-900/40 backdrop-blur-sm z-30">
-          <div className="bg-white border-b border-slate-200 p-4 space-y-2">
+          <div className="bg-white border-b border-slate-200 p-4 space-y-3">
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
@@ -93,13 +120,35 @@ export default function Sidebar() {
               </svg>
               Products
             </Link>
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium">{user?.username || "Admin"}</span>
+
+            {/* Mobile Profile & Logout */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-full overflow-hidden ring-1 ring-slate-200">
+                  {user?.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={user.image} alt={user.username || "User"} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xs">
+                      {user?.firstName ? user.firstName[0] : "E"}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-800">{fullName}</div>
+                  <div className="text-[10px] text-slate-400">@{user?.username || "emilys"}</div>
+                </div>
+              </div>
+
+              {/* Mobile Dedicated Logout Button */}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="text-xs font-semibold text-red-600 hover:text-red-700"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
               >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
                 Sign out
               </button>
             </div>
@@ -107,11 +156,11 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Desktop Sleek Icon Sidebar (matching the screenshot) */}
-      <aside className="hidden md:flex flex-col items-center justify-between w-20 py-6 bg-white border-r border-slate-200/80 shrink-0 select-none">
+      {/* Desktop Sleek Icon Sidebar */}
+      <aside className="hidden md:flex flex-col items-center justify-between w-20 py-6 bg-white border-r border-slate-200/80 shrink-0 select-none relative z-30">
         {/* Top: Logo & Main Navigation */}
         <div className="flex flex-col items-center gap-8 w-full">
-          {/* Logo Mark: matching the curvy 'P' glyph */}
+          {/* Logo Mark */}
           <Link
             href="/"
             className="group relative flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 transition-transform hover:scale-105"
@@ -145,7 +194,7 @@ export default function Sidebar() {
               </svg>
             </Link>
 
-            {/* Products / Store (Active) */}
+            {/* Products / Store */}
             <Link
               href="/products"
               title="Products"
@@ -155,16 +204,15 @@ export default function Sidebar() {
                   : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {/* Storefront icon matching screenshot */}
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </Link>
 
-            {/* Orders / Delivery (matching screenshot icon) */}
+            {/* Orders */}
             <button
               type="button"
-              title="Orders (Coming Soon)"
+              title="Orders"
               className="flex items-center justify-center h-11 w-11 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -173,10 +221,10 @@ export default function Sidebar() {
               </svg>
             </button>
 
-            {/* Analytics (matching screenshot icon) */}
+            {/* Analytics */}
             <button
               type="button"
-              title="Analytics (Coming Soon)"
+              title="Analytics"
               className="flex items-center justify-center h-11 w-11 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -185,10 +233,10 @@ export default function Sidebar() {
               </svg>
             </button>
 
-            {/* Warehouse / Inventory (matching screenshot icon) */}
+            {/* Warehouse / Inventory */}
             <button
               type="button"
-              title="Inventory (Coming Soon)"
+              title="Inventory"
               className="flex items-center justify-center h-11 w-11 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -196,10 +244,10 @@ export default function Sidebar() {
               </svg>
             </button>
 
-            {/* Settings (matching screenshot icon) */}
+            {/* Settings */}
             <button
               type="button"
-              title="Settings (Coming Soon)"
+              title="Settings"
               className="flex items-center justify-center h-11 w-11 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -210,37 +258,81 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Bottom: Sidebar Expand icon & User Avatar */}
-        <div className="flex flex-col items-center gap-4 w-full">
-          {/* Toggle icon matching bottom of screenshot */}
+        {/* Bottom Actions: User Avatar & Dedicated Logout Icon */}
+        <div className="flex flex-col items-center gap-3 w-full relative" ref={popoverRef}>
+          {/* User Profile Avatar (Clicking opens profile card, does NOT log out!) */}
           <button
             type="button"
-            title="Collapse / Expand"
-            className="flex items-center justify-center h-10 w-10 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+            onClick={() => setProfilePopoverOpen(!profilePopoverOpen)}
+            title={`View profile for ${fullName}`}
+            className="relative flex items-center justify-center h-10 w-10 rounded-full overflow-hidden ring-2 ring-slate-200 hover:ring-blue-500 transition-all cursor-pointer focus:outline-none"
+          >
+            {user?.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={user.image} alt={user.username || "User"} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs">
+                {user?.firstName ? user.firstName[0] : "E"}
+              </div>
+            )}
+            {/* Active online dot */}
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+          </button>
+
+          {/* Dedicated Logout Icon Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Sign Out"
+            className="flex items-center justify-center h-10 w-10 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            aria-label="Sign Out"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
           </button>
 
-          {/* User Profile Avatar with popover / logout action */}
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={handleLogout}
-              title={`Logged in as ${user?.username || "Admin"} (Click to logout)`}
-              className="relative flex items-center justify-center h-10 w-10 rounded-full overflow-hidden ring-2 ring-slate-200 hover:ring-blue-500 transition-all cursor-pointer"
-            >
-              {user?.image ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={user.image} alt={user.username || "User"} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-gradient-to-tr from-amber-400 to-rose-400 flex items-center justify-center text-white font-semibold text-xs">
-                  {user?.firstName ? user.firstName[0] : "E"}
+          {/* Floating Profile Popover (Opened by clicking profile avatar) */}
+          {profilePopoverOpen && (
+            <div className="fixed left-20 bottom-6 w-72 rounded-2xl bg-white p-4 shadow-2xl border border-slate-200/90 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="h-11 w-11 rounded-full overflow-hidden ring-2 ring-slate-100 shrink-0">
+                  {user?.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={user.image} alt={user.username || "User"} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                      {user?.firstName ? user.firstName[0] : "E"}
+                    </div>
+                  )}
                 </div>
-              )}
-            </button>
-          </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-slate-900 truncate">{fullName}</div>
+                  <div className="text-xs text-slate-400 font-medium truncate">@{user?.username || "emilys"}</div>
+                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Administrator
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 space-y-1">
+                <div className="text-[11px] text-slate-400 px-1 pb-1">
+                  Signed in as <span className="font-semibold text-slate-600">{user?.email || "emily.johnson@x.dummyjson.com"}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
     </>
