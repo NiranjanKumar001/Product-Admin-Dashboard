@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { getProductById, updateProduct, deleteProduct, Product } from "@/services/products";
+import { AlertTriangleIcon, StarIcon, XIcon } from "@/components/Icons";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -216,8 +217,8 @@ export default function ProductDetailPage() {
             </svg>
             <span className="font-medium">{saveSuccessNotice}</span>
           </div>
-          <button type="button" onClick={() => setSaveSuccessNotice("")} className="text-emerald-600 hover:text-emerald-900">
-            ✕
+          <button type="button" onClick={() => setSaveSuccessNotice("")} className="text-emerald-600 hover:text-emerald-900 p-1 rounded-lg hover:bg-emerald-100/60" aria-label="Dismiss notice">
+            <XIcon className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -298,8 +299,8 @@ export default function ProductDetailPage() {
       {/* Not Found State */}
       {!isLoading && isNotFound && (
         <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 text-2xl">
-            ⚠️
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500">
+            <AlertTriangleIcon className="w-7 h-7" />
           </div>
           <h2 className="mt-4 text-xl font-bold text-slate-900">Product Not Found</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -618,10 +619,13 @@ export default function ProductDetailPage() {
                             <span className="text-sm font-bold text-slate-800">{rev.reviewerName}</span>
                             <span className="text-xs text-slate-400">{formattedDate}</span>
                           </div>
-                          <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
-                            {"★".repeat(rev.rating)}
-                            {"☆".repeat(Math.max(0, 5 - rev.rating))}
-                            <span className="ml-1 text-xs font-semibold text-slate-600">{rev.rating}/5</span>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <div className="flex items-center gap-0.5 text-amber-400">
+                              {[0, 1, 2, 3, 4].map((sIdx) => (
+                                <StarIcon key={sIdx} className="w-3.5 h-3.5" filled={sIdx < rev.rating} />
+                              ))}
+                            </div>
+                            <span className="text-xs font-semibold text-slate-600">{rev.rating}/5</span>
                           </div>
                           <p className="mt-2 text-xs leading-relaxed text-slate-600">{rev.comment}</p>
                         </div>
@@ -652,8 +656,9 @@ export default function ProductDetailPage() {
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close modal"
               >
-                ✕
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
 

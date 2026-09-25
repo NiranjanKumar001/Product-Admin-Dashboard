@@ -15,6 +15,7 @@ import {
   Product,
   ProductCategory,
 } from "@/services/products";
+import { StarIcon, RefreshCwIcon, XIcon } from "@/components/Icons";
 
 // Helper function to calculate which page numbers should be visible
 function getVisiblePages(currentPage: number, totalPages: number) {
@@ -582,9 +583,10 @@ function ProductsContent() {
           <button
             type="button"
             onClick={handleRetry}
-            className="inline-flex items-center rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 shadow-xs hover:bg-rose-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 shadow-xs hover:bg-rose-50"
           >
-            ↻ Retry
+            <RefreshCwIcon className="w-3.5 h-3.5" />
+            Retry
           </button>
         </div>
       </div>
@@ -645,8 +647,9 @@ function ProductsContent() {
                       ${product.price.toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
-                        ⭐ {product.rating}
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600">
+                        <StarIcon className="w-3.5 h-3.5 text-amber-400" />
+                        {product.rating}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -720,7 +723,10 @@ function ProductsContent() {
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                       <span className="capitalize font-medium text-slate-600">{product.category}</span>
                       <span>•</span>
-                      <span>⭐ {product.rating}</span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                        <StarIcon className="w-3.5 h-3.5 text-amber-400" />
+                        {product.rating}
+                      </span>
                       <span>•</span>
                       <span>Stock: {product.stock}</span>
                     </div>
@@ -877,8 +883,8 @@ function ProductsContent() {
             </svg>
             <span className="font-medium">{successNotice}</span>
           </div>
-          <button type="button" onClick={() => setSuccessNotice("")} className="text-emerald-700 hover:text-emerald-900 font-bold">
-            ✕
+          <button type="button" onClick={() => setSuccessNotice("")} className="text-emerald-700 hover:text-emerald-900 p-1 rounded-lg hover:bg-emerald-100/60" aria-label="Dismiss notice">
+            <XIcon className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -956,8 +962,8 @@ function ProductsContent() {
                 disabled={!sortField}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-600 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
               >
-                <option value="asc">Ascending ↑</option>
-                <option value="desc">Descending ↓</option>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
               </select>
             </div>
           </div>
@@ -992,8 +998,9 @@ function ProductsContent() {
                 onClick={handleCloseAddModal}
                 disabled={isSubmitting}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                aria-label="Close modal"
               >
-                ✕
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
 

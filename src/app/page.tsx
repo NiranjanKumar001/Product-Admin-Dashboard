@@ -1,4 +1,12 @@
 import Link from "next/link";
+import {
+  PackageIcon,
+  TagIcon,
+  StarIcon,
+  ShieldCheckIcon,
+  ShoppingBagIcon,
+  SparklesIcon,
+} from "@/components/Icons";
 
 export default function HomePage() {
   return (
@@ -24,9 +32,7 @@ export default function HomePage() {
               href="/products"
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-700 transition-all"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
+              <ShoppingBagIcon className="w-4 h-4 text-white" />
               Open Catalog
             </Link>
           </div>
@@ -39,7 +45,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Items</span>
             <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              📦
+              <PackageIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900">194+</div>
@@ -53,7 +59,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Categories</span>
             <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              🏷️
+              <TagIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900">24</div>
@@ -64,7 +70,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Avg Rating</span>
             <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              ⭐
+              <StarIcon className="w-4 h-4 text-amber-500" />
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900">4.8 / 5.0</div>
@@ -75,7 +81,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Store Health</span>
             <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              🛡️
+              <ShieldCheckIcon className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
           <div className="text-2xl font-bold text-emerald-600">99.8%</div>
@@ -87,8 +93,8 @@ export default function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between space-y-4">
           <div>
-            <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg mb-3">
-              🛍️
+            <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+              <ShoppingBagIcon className="w-5 h-5 text-blue-600" />
             </div>
             <h3 className="text-base font-bold text-slate-900">Interactive Product Catalog</h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -105,8 +111,8 @@ export default function HomePage() {
 
         <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between space-y-4">
           <div>
-            <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-lg mb-3">
-              ✨
+            <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+              <SparklesIcon className="w-5 h-5 text-purple-600" />
             </div>
             <h3 className="text-base font-bold text-slate-900">Modern Dribbble Aesthetic</h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
