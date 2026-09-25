@@ -418,12 +418,13 @@ function ProductsContent() {
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4">Rating</th>
                 <th className="px-6 py-4">Stock</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">
                     No products found.
                   </td>
                 </tr>
@@ -457,6 +458,14 @@ function ProductsContent() {
                     </td>
                     <td className="px-6 py-4">
                       {product.stock}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link
+                        href={`/products/${product.id}`}
+                        className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                      >
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))
