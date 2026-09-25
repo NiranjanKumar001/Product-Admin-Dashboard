@@ -67,3 +67,38 @@ export async function searchProducts(
   return response.data;
 }
 
+// Interface representing a product category
+export interface ProductCategory {
+  slug: string;
+  name: string;
+}
+
+// 4. Get all available product categories from DummyJSON
+export async function getCategories(): Promise<ProductCategory[]> {
+  const response = await api.get("/products/categories");
+  return response.data.map((cat: string | ProductCategory) => {
+    if (typeof cat === "string") {
+      return { slug: cat, name: cat };
+    }
+    return { slug: cat.slug, name: cat.name };
+  });
+}
+
+// 5. Get products filtered by category from DummyJSON
+export async function getProductsByCategory(
+  category: string,
+  limit = 10,
+  skip = 0,
+  signal?: AbortSignal
+): Promise<ProductsResponse> {
+  const response = await api.get(`/products/category/${category}`, {
+    params: {
+      limit: limit,
+      skip: skip,
+    },
+    signal: signal,
+  });
+  return response.data;
+}
+
+

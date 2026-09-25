@@ -3,8 +3,14 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { getProducts, searchProducts, Product } from "@/services/products";
-
+import {
+  getProducts,
+  searchProducts,
+  getCategories,
+  getProductsByCategory,
+  Product,
+  ProductCategory,
+} from "@/services/products";
 
 // Helper function to calculate which page numbers should be visible
 function getVisiblePages(currentPage: number, totalPages: number) {
@@ -72,7 +78,13 @@ function ProductsContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [total, setTotal] = useState(0);
 
-  // 1. Read search query 'q' from the URL
+  // Categories list state
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  // 1. Read category from URL
+  const selectedCategory = searchParams.get("category") || "";
+
+  // 2. Read search query 'q' from URL
   const searchQuery = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
@@ -83,7 +95,7 @@ function ProductsContent() {
     setSearchInput(searchQuery);
   }
 
-  // 2. Read and safely parse 'page' from the URL
+  // 3. Read and safely parse 'page' from the URL
   const rawPage = searchParams.get("page");
   let page = Number(rawPage);
 
@@ -92,7 +104,7 @@ function ProductsContent() {
     page = 1;
   }
 
-  // 3. Read and safely parse 'limit' from the URL
+  // 4. Read and safely parse 'limit' from the URL
   const rawLimit = searchParams.get("limit");
   let limit = Number(rawLimit);
 
@@ -101,11 +113,19 @@ function ProductsContent() {
     limit = 10;
   }
 
-  // Helper function to update search query, page, and limit in the URL
-  function updateUrl(newPage: number, newLimit: number, newQuery: string = searchQuery) {
+  // Helper function to update search query, category, page, and limit in the URL
+  function updateUrl(
+    newPage: number,
+    newLimit: number,
+    newQuery: string = searchQuery,
+    newCategory: string = selectedCategory
+  ) {
     const params = new URLSearchParams();
     if (newQuery) {
       params.set("q", newQuery);
+    }
+    if (newCategory) {
+      params.set("category", newCategory);
     }
     params.set("page", String(newPage));
     params.set("limit", String(newLimit));
@@ -127,6 +147,9 @@ function ProductsContent() {
       if (trimmed) {
         params.set("q", trimmed);
       }
+      if (selectedCategory) {
+        params.set("category", selectedCategory);
+      }
       // When the search query changes, always reset to page 1
       params.set("page", "1");
       params.set("limit", String(limit));
@@ -138,7 +161,7 @@ function ProductsContent() {
     return () => {
       clearTimeout(timer);
     };
-  }, [searchInput, searchQuery, limit, router]);
+  }, [searchInput, searchQuery, selectedCategory, limit, router]);
 
   // Verify authentication on mount
   useEffect(() => {
@@ -157,13 +180,31 @@ function ProductsContent() {
     return () => clearTimeout(timer);
   }, [router]);
 
-  // Fetch products whenever auth is confirmed or URL parameters (search/page/limit) change
+  // Load available categories on mount once authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
 
-    // Create an AbortController to cancel this request if a new search or page change occurs
+    async function loadCategories() {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch {
+        // Leave categories empty on error
+      }
+    }
+
+    loadCategories();
+  }, [isAuthenticated]);
+
+  // Fetch products whenever auth is confirmed or URL parameters (category/search/page/limit) change
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    // Create an AbortController to cancel this request if a new filter or page change occurs
     const controller = new AbortController();
 
     async function loadProducts() {
@@ -174,10 +215,25 @@ function ProductsContent() {
         const calculatedSkip = (page - 1) * limit;
         let data;
 
-        // If a search query is present, use searchProducts; otherwise, use regular getProducts
-        if (searchQuery.trim() !== "") {
-          data = await searchProducts(searchQuery.trim(), limit, calculatedSkip, controller.signal);
+        // Selection Behavior for Category + Search:
+        // 1. If a category is selected, category filtering takes priority.
+        if (selectedCategory && selectedCategory !== "all") {
+          data = await getProductsByCategory(
+            selectedCategory,
+            limit,
+            calculatedSkip,
+            controller.signal
+          );
+        } else if (searchQuery.trim() !== "") {
+          // 2. If no category is selected and a search query is present, search products
+          data = await searchProducts(
+            searchQuery.trim(),
+            limit,
+            calculatedSkip,
+            controller.signal
+          );
         } else {
+          // 3. Otherwise, fetch standard paginated products
           data = await getProducts(limit, calculatedSkip, controller.signal);
         }
 
@@ -200,12 +256,11 @@ function ProductsContent() {
 
     loadProducts();
 
-    // Cleanup: cancel the pending request when dependencies change (e.g. user types a new search term)
-    // This prevents race conditions where an older, slower request overwrites newer results.
+    // Cleanup: cancel the pending request when dependencies change
     return () => {
       controller.abort();
     };
-  }, [isAuthenticated, page, limit, searchQuery]);
+  }, [isAuthenticated, page, limit, searchQuery, selectedCategory]);
 
   // While checking authentication, show a simple loading message
   if (isCheckingAuth) {
@@ -234,12 +289,19 @@ function ProductsContent() {
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     // When search changes, always go back to page 1
-    updateUrl(1, limit, searchInput.trim());
+    updateUrl(1, limit, searchInput.trim(), selectedCategory);
   }
 
   function handleClearSearch() {
     setSearchInput("");
-    updateUrl(1, limit, "");
+    updateUrl(1, limit, "", selectedCategory);
+  }
+
+  // Category change handler
+  function handleCategoryChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newCategory = e.target.value;
+    // When category changes, always go back to page 1
+    updateUrl(1, limit, searchQuery, newCategory);
   }
 
   // Calculate total pages safely
@@ -250,19 +312,19 @@ function ProductsContent() {
 
   function handlePrevPage() {
     if (page > 1) {
-      updateUrl(page - 1, limit, searchQuery);
+      updateUrl(page - 1, limit, searchQuery, selectedCategory);
     }
   }
 
   function handleNextPage() {
     if (page < totalPages) {
-      updateUrl(page + 1, limit, searchQuery);
+      updateUrl(page + 1, limit, searchQuery, selectedCategory);
     }
   }
 
   function handleLimitChange(newLimit: number) {
     // When the page size changes, always go back to page 1
-    updateUrl(1, newLimit, searchQuery);
+    updateUrl(1, newLimit, searchQuery, selectedCategory);
   }
 
   // Calculate "Showing X–Y of Z" values safely
@@ -315,7 +377,7 @@ function ProductsContent() {
               {products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                    No products found matching your search.
+                    No products found.
                   </td>
                 </tr>
               ) : (
@@ -410,7 +472,7 @@ function ProductsContent() {
                   key={item}
                   type="button"
                   disabled={isLoadingProducts}
-                  onClick={() => updateUrl(item, limit, searchQuery)}
+                  onClick={() => updateUrl(item, limit, searchQuery, selectedCategory)}
                   className={buttonStyle}
                 >
                   {item}
@@ -453,33 +515,64 @@ function ProductsContent() {
         </button>
       </div>
 
-      {/* Search Input Bar */}
-      <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search products by title..."
-            className="w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100"
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Search
-        </button>
-        {searchQuery ? (
+      {/* Search and Category Filter Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2 flex-1 min-w-[280px] max-w-md">
+          <div className="relative flex-1 min-w-[180px]">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search products by title..."
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100"
+            />
+          </div>
           <button
-            type="button"
-            onClick={handleClearSearch}
-            className="rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            type="submit"
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            Clear
+            Search
           </button>
-        ) : null}
-      </form>
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              Clear
+            </button>
+          ) : null}
+        </form>
+
+        {/* Category Dropdown */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="category-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Category:
+          </label>
+          <select
+            id="category-select"
+            value={selectedCategory}
+            onChange={handleCategoryChange}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.slug} value={cat.slug}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Informational badge when both category and search query are present */}
+      {selectedCategory && searchQuery ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+          Showing category: <span className="font-semibold capitalize">{selectedCategory}</span>.
+          (Category filter takes priority over the search term &quot;{searchQuery}&quot; due to API limitations.)
+        </div>
+      ) : null}
 
       {content}
     </div>
