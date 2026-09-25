@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getProducts, Product } from "@/services/products";
+import { getProducts, searchProducts, Product } from "@/services/products";
 
 // Helper function to calculate which page numbers should be visible
 function getVisiblePages(currentPage: number, totalPages: number) {
@@ -70,7 +70,18 @@ function ProductsContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [total, setTotal] = useState(0);
 
-  // 1. Read and safely parse 'page' from the URL
+  // 1. Read search query 'q' from the URL
+  const searchQuery = searchParams.get("q") || "";
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
+
+  // Sync search input when URL changes (e.g. back/forward navigation or clear)
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery);
+    setSearchInput(searchQuery);
+  }
+
+  // 2. Read and safely parse 'page' from the URL
   const rawPage = searchParams.get("page");
   let page = Number(rawPage);
 
@@ -79,7 +90,7 @@ function ProductsContent() {
     page = 1;
   }
 
-  // 2. Read and safely parse 'limit' from the URL
+  // 3. Read and safely parse 'limit' from the URL
   const rawLimit = searchParams.get("limit");
   let limit = Number(rawLimit);
 
@@ -105,7 +116,7 @@ function ProductsContent() {
     return () => clearTimeout(timer);
   }, [router]);
 
-  // Fetch products whenever auth is confirmed or URL parameters (page/limit) change
+  // Fetch products whenever auth is confirmed or URL parameters (search/page/limit) change
   useEffect(() => {
     if (!isAuthenticated) {
       return;
@@ -117,7 +128,15 @@ function ProductsContent() {
 
       try {
         const calculatedSkip = (page - 1) * limit;
-        const data = await getProducts(limit, calculatedSkip);
+        let data;
+
+        // If a search query is present, use searchProducts; otherwise, use regular getProducts
+        if (searchQuery.trim() !== "") {
+          data = await searchProducts(searchQuery.trim(), limit, calculatedSkip);
+        } else {
+          data = await getProducts(limit, calculatedSkip);
+        }
+
         setProducts(data.products);
         setTotal(data.total);
       } catch {
@@ -128,7 +147,7 @@ function ProductsContent() {
     }
 
     loadProducts();
-  }, [isAuthenticated, page, limit]);
+  }, [isAuthenticated, page, limit, searchQuery]);
 
   // While checking authentication, show a simple loading message
   if (isCheckingAuth) {
@@ -153,12 +172,27 @@ function ProductsContent() {
     router.push("/login");
   }
 
-  // Helper function to update page and limit query parameters in the URL
-  function updateUrl(newPage: number, newLimit: number) {
+  // Helper function to update search query, page, and limit in the URL
+  function updateUrl(newPage: number, newLimit: number, newQuery: string = searchQuery) {
     const params = new URLSearchParams();
+    if (newQuery) {
+      params.set("q", newQuery);
+    }
     params.set("page", String(newPage));
     params.set("limit", String(newLimit));
     router.push(`/products?${params.toString()}`);
+  }
+
+  // Search submission and clear handlers
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // When search changes, always go back to page 1
+    updateUrl(1, limit, searchInput.trim());
+  }
+
+  function handleClearSearch() {
+    setSearchInput("");
+    updateUrl(1, limit, "");
   }
 
   // Calculate total pages safely
@@ -169,19 +203,19 @@ function ProductsContent() {
 
   function handlePrevPage() {
     if (page > 1) {
-      updateUrl(page - 1, limit);
+      updateUrl(page - 1, limit, searchQuery);
     }
   }
 
   function handleNextPage() {
     if (page < totalPages) {
-      updateUrl(page + 1, limit);
+      updateUrl(page + 1, limit, searchQuery);
     }
   }
 
   function handleLimitChange(newLimit: number) {
     // When the page size changes, always go back to page 1
-    updateUrl(1, newLimit);
+    updateUrl(1, newLimit, searchQuery);
   }
 
   // Calculate "Showing X–Y of Z" values safely
@@ -234,7 +268,7 @@ function ProductsContent() {
               {products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                    No products found for this page.
+                    No products found matching your search.
                   </td>
                 </tr>
               ) : (
@@ -329,7 +363,7 @@ function ProductsContent() {
                   key={item}
                   type="button"
                   disabled={isLoadingProducts}
-                  onClick={() => updateUrl(item, limit)}
+                  onClick={() => updateUrl(item, limit, searchQuery)}
                   className={buttonStyle}
                 >
                   {item}
@@ -371,6 +405,34 @@ function ProductsContent() {
           Logout
         </button>
       </div>
+
+      {/* Search Input Bar */}
+      <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search products by title..."
+            className="w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100"
+          />
+        </div>
+        <button
+          type="submit"
+          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          Search
+        </button>
+        {searchQuery ? (
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          >
+            Clear
+          </button>
+        ) : null}
+      </form>
 
       {content}
     </div>

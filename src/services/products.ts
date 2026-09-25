@@ -38,3 +38,20 @@ export async function getProductById(id: number | string): Promise<Product> {
   const response = await api.get(`/products/${id}`);
   return response.data;
 }
+
+// 3. Search products by query string with limit and skip from DummyJSON
+export async function searchProducts(
+  query: string,
+  limit = 10,
+  skip = 0
+): Promise<ProductsResponse> {
+  const response = await api.get("/products/search", {
+    params: {
+      q: query,
+      limit: limit,
+      skip: skip,
+    },
+  });
+  return response.data;
+}
+
