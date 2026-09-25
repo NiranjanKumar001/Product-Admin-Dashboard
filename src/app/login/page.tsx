@@ -54,7 +54,8 @@ export default function LoginPage() {
 
       // Redirect user to the products page
       router.push("/products");
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
       // Extract error message from server response if available
       if (error.response && error.response.data && error.response.data.message) {
         setErrorMessage(error.response.data.message);

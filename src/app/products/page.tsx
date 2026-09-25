@@ -1,4 +1,48 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
 export default function ProductsPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    // Check if the user has an authentication token in localStorage
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+    // If no token is found, redirect to the login page
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    // If token exists, allow access to the products page
+    const timer = setTimeout(() => {
+      setIsAuthenticated(true);
+      setIsCheckingAuth(false);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
+  // While checking if a token exists, display a simple loading message
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Checking authentication...
+        </p>
+      </div>
+    );
+  }
+
+  // Prevent showing protected content if authentication failed
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
