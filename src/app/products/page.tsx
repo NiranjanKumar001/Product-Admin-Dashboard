@@ -18,7 +18,6 @@ import {
 
 // Helper function to calculate which page numbers should be visible
 function getVisiblePages(currentPage: number, totalPages: number) {
-  // If there are 7 or fewer pages, show all page numbers
   if (totalPages <= 7) {
     const pages: (number | string)[] = [];
     for (let i = 1; i <= totalPages; i++) {
@@ -28,16 +27,12 @@ function getVisiblePages(currentPage: number, totalPages: number) {
   }
 
   const pages: (number | string)[] = [];
-
-  // Always show the first page
   pages.push(1);
 
-  // If current page is further in, show an ellipsis
   if (currentPage > 3) {
     pages.push("ellipsis-start");
   }
 
-  // Calculate the window of numbers around the current page
   let start = currentPage - 1;
   let end = currentPage + 1;
 
@@ -57,14 +52,11 @@ function getVisiblePages(currentPage: number, totalPages: number) {
     }
   }
 
-  // If there are more pages before the last page, show an ellipsis
   if (currentPage < totalPages - 2) {
     pages.push("ellipsis-end");
   }
 
-  // Always show the last page
   pages.push(totalPages);
-
   return pages;
 }
 
@@ -179,7 +171,7 @@ function ProductsContent() {
       setTotal((prev) => Math.max(0, prev - 1));
 
       setSuccessNotice(
-        `Product "${productToDelete.title}" deleted successfully! Note: DummyJSON is a mock API, changes are simulated in-memory.`
+        `Product "${productToDelete.title}" deleted successfully! (DummyJSON mock simulation)`
       );
       setProductToDelete(null);
     } catch {
@@ -193,7 +185,6 @@ function ProductsContent() {
     e.preventDefault();
     setFormApiError("");
 
-    // Validate fields with simple if statements
     const errors: {
       title?: string;
       price?: string;
@@ -230,7 +221,6 @@ function ProductsContent() {
 
     setFormErrors(errors);
 
-    // Stop if validation fails
     if (Object.keys(errors).length > 0) {
       return;
     }
@@ -266,7 +256,7 @@ function ProductsContent() {
         );
 
         setSuccessNotice(
-          `Product "${formTitle.trim()}" updated successfully! Note: DummyJSON is a mock API, changes are simulated in-memory.`
+          `Product "${formTitle.trim()}" updated successfully! (DummyJSON mock simulation)`
         );
       } else {
         // Add new product via POST /products/add
@@ -278,98 +268,67 @@ function ProductsContent() {
           description: formDescription.trim(),
         });
 
-        const productToAdd: Product = {
-          id: newProduct.id,
-          title: newProduct.title || formTitle.trim(),
-          price: newProduct.price !== undefined ? newProduct.price : parsedPrice,
-          category: newProduct.category || formCategory.trim(),
-          stock: newProduct.stock !== undefined ? newProduct.stock : parsedStock,
-          description: newProduct.description || formDescription.trim(),
-          rating: 5.0,
-          thumbnail:
-            newProduct.thumbnail ||
-            "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
-        };
-
-        // Update local UI state so the new product immediately appears in the list
-        setProducts((prev) => [productToAdd, ...prev]);
+        setProducts((prev) => [newProduct, ...prev]);
         setTotal((prev) => prev + 1);
 
         setSuccessNotice(
-          `Product "${productToAdd.title}" added successfully! (Assigned ID: ${productToAdd.id}). Note: DummyJSON is a mock API, changes are simulated in-memory.`
+          `Product "${newProduct.title}" added successfully! (DummyJSON mock simulation)`
         );
       }
 
       setIsAddModalOpen(false);
       resetForm();
     } catch {
-      if (editingProduct) {
-        setFormApiError("Failed to update product. Please check your network and try again.");
-      } else {
-        setFormApiError("Failed to add product. Please check your network and try again.");
-      }
+      setFormApiError(
+        editingProduct
+          ? "Failed to update product. Please check your network and try again."
+          : "Failed to add product. Please check your network and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  // 1. Read category from URL
-  const selectedCategory = searchParams.get("category") || "";
+  // URL state reading with safe defaults
+  const pageParam = searchParams.get("page");
+  let parsedPage = pageParam ? parseInt(pageParam, 10) : 1;
+  if (Number.isNaN(parsedPage) || parsedPage < 1) {
+    parsedPage = 1;
+  }
+  const page = parsedPage;
 
-  // 2. Read search query 'q' from URL
+  const limitParam = searchParams.get("limit");
+  let parsedLimit = limitParam ? parseInt(limitParam, 10) : 10;
+  if (Number.isNaN(parsedLimit) || parsedLimit < 1) {
+    parsedLimit = 10;
+  }
+  const limit = parsedLimit;
+
   const searchQuery = searchParams.get("q") || "";
+  const selectedCategory = searchParams.get("category") || "";
+  const sortField = searchParams.get("sort") || "";
+  const sortOrder = searchParams.get("order") === "desc" ? "desc" : "asc";
+
   const [searchInput, setSearchInput] = useState(searchQuery);
-  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
 
-  // Sync search input when URL changes (e.g. back/forward navigation or clear)
-  if (prevSearchQuery !== searchQuery) {
-    setPrevSearchQuery(searchQuery);
-    setSearchInput(searchQuery);
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchInput(searchQuery);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // 3. Read and safely parse 'page' from the URL
-  const rawPage = searchParams.get("page");
-  let page = Number(rawPage);
-
-  // If page is not a number, 0, or negative, fall back to page 1
-  if (!rawPage || Number.isNaN(page) || page < 1) {
-    page = 1;
-  }
-
-  // 4. Read and safely parse 'limit' from the URL
-  const rawLimit = searchParams.get("limit");
-  let limit = Number(rawLimit);
-
-  // Only permit 10, 20, or 50. Fall back to 10 for any other value.
-  if (limit !== 10 && limit !== 20 && limit !== 50) {
-    limit = 10;
-  }
-
-  // 5. Read and safely parse 'sort' and 'order' from the URL
-  const rawSort = searchParams.get("sort") || "";
-  let sortField = "";
-  if (rawSort === "price" || rawSort === "rating" || rawSort === "title") {
-    sortField = rawSort;
-  }
-
-  const rawOrder = searchParams.get("order") || "asc";
-  let sortOrder = "asc";
-  if (rawOrder === "desc") {
-    sortOrder = "desc";
-  }
-
-  // Helper function to update search query, category, sort, order, page, and limit in the URL
   function updateUrl(
     newPage: number,
     newLimit: number,
-    newQuery: string = searchQuery,
-    newCategory: string = selectedCategory,
-    newSort: string = sortField,
-    newOrder: string = sortOrder
+    newSearch: string,
+    newCategory: string,
+    newSort: string,
+    newOrder: string
   ) {
     const params = new URLSearchParams();
-    if (newQuery) {
-      params.set("q", newQuery);
+    if (newSearch) {
+      params.set("q", newSearch);
     }
     if (newCategory) {
       params.set("category", newCategory);
@@ -383,14 +342,12 @@ function ProductsContent() {
     router.push(`/products?${params.toString()}`);
   }
 
-  // Debounce search input: wait 450ms after user stops typing before updating the URL
+  // Debounce search input
   useEffect(() => {
-    // If the current input matches what is already in the URL, do nothing
     if (searchInput.trim() === searchQuery) {
       return;
     }
 
-    // Wait 450ms after the user stops typing
     const timer = setTimeout(() => {
       const params = new URLSearchParams();
       const trimmed = searchInput.trim();
@@ -405,14 +362,12 @@ function ProductsContent() {
         params.set("sort", sortField);
         params.set("order", sortOrder);
       }
-      // When the search query changes, always reset to page 1
       params.set("page", "1");
       params.set("limit", String(limit));
 
       router.push(`/products?${params.toString()}`);
     }, 450);
 
-    // Cleanup: cancel the previous timer if the user types again within 450ms
     return () => {
       clearTimeout(timer);
     };
@@ -453,13 +408,12 @@ function ProductsContent() {
     loadCategories();
   }, [isAuthenticated]);
 
-  // Fetch products whenever auth is confirmed or URL parameters (category/search/page/limit) change
+  // Fetch products
   useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
 
-    // Create an AbortController to cancel this request if a new filter or page change occurs
     const controller = new AbortController();
 
     async function loadProducts() {
@@ -470,8 +424,6 @@ function ProductsContent() {
         const calculatedSkip = (page - 1) * limit;
         let data;
 
-        // Selection Behavior for Category + Search:
-        // 1. If a category is selected, category filtering takes priority.
         if (selectedCategory && selectedCategory !== "all") {
           data = await getProductsByCategory(
             selectedCategory,
@@ -482,7 +434,6 @@ function ProductsContent() {
             controller.signal
           );
         } else if (searchQuery.trim() !== "") {
-          // 2. If no category is selected and a search query is present, search products
           data = await searchProducts(
             searchQuery.trim(),
             limit,
@@ -492,7 +443,6 @@ function ProductsContent() {
             controller.signal
           );
         } else {
-          // 3. Otherwise, fetch standard paginated products
           data = await getProducts(
             limit,
             calculatedSkip,
@@ -502,17 +452,37 @@ function ProductsContent() {
           );
         }
 
-        setProducts(data.products);
+        let fetchedProducts = data.products;
+        if (selectedCategory && selectedCategory !== "all" && sortField) {
+          fetchedProducts = [...fetchedProducts].sort((a, b) => {
+            let valA: string | number = "";
+            let valB: string | number = "";
+
+            if (sortField === "price") {
+              valA = a.price;
+              valB = b.price;
+            } else if (sortField === "rating") {
+              valA = a.rating ?? 0;
+              valB = b.rating ?? 0;
+            } else if (sortField === "title") {
+              valA = a.title.toLowerCase();
+              valB = b.title.toLowerCase();
+            }
+
+            if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+            if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+            return 0;
+          });
+        }
+
+        setProducts(fetchedProducts);
         setTotal(data.total);
       } catch (err) {
-        // If the previous request was deliberately cancelled by us, do not show an error message
         if (axios.isCancel(err)) {
           return;
         }
-
-        setErrorMessage("Failed to load products. Please try again.");
+        setErrorMessage("Failed to load products. Please check your connection and try again.");
       } finally {
-        // Only clear loading state if this request was not aborted by a newer one
         if (!controller.signal.aborted) {
           setIsLoadingProducts(false);
         }
@@ -521,39 +491,13 @@ function ProductsContent() {
 
     loadProducts();
 
-    // Cleanup: cancel the pending request when dependencies change
     return () => {
       controller.abort();
     };
   }, [isAuthenticated, page, limit, searchQuery, selectedCategory, sortField, sortOrder, retryTrigger]);
 
-  // While checking authentication, show a simple loading message
-  if (isCheckingAuth) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Checking authentication...
-        </p>
-      </div>
-    );
-  }
-
-  // Prevent showing protected content if authentication failed
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  function handleLogout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
-  }
-
-  // Search submission and clear handlers
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // When search changes, always go back to page 1
     updateUrl(1, limit, searchInput.trim(), selectedCategory, sortField, sortOrder);
   }
 
@@ -562,27 +506,21 @@ function ProductsContent() {
     updateUrl(1, limit, "", selectedCategory, sortField, sortOrder);
   }
 
-  // Category change handler
   function handleCategoryChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newCategory = e.target.value;
-    // When category changes, always go back to page 1
     updateUrl(1, limit, searchQuery, newCategory, sortField, sortOrder);
   }
 
-  // Sort field and order handlers
   function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newSort = e.target.value;
-    // When sorting field changes, reset to page 1
     updateUrl(1, limit, searchQuery, selectedCategory, newSort, sortOrder);
   }
 
   function handleOrderChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newOrder = e.target.value;
-    // When sort order changes, reset to page 1
     updateUrl(1, limit, searchQuery, selectedCategory, sortField, newOrder);
   }
 
-  // Calculate total pages safely
   let totalPages = Math.ceil(total / limit);
   if (totalPages < 1) {
     totalPages = 1;
@@ -601,11 +539,9 @@ function ProductsContent() {
   }
 
   function handleLimitChange(newLimit: number) {
-    // When the page size changes, always go back to page 1
     updateUrl(1, newLimit, searchQuery, selectedCategory, sortField, sortOrder);
   }
 
-  // Calculate "Showing X–Y of Z" values safely
   const currentSkip = (page - 1) * limit;
   let startItem = 0;
   let endItem = 0;
@@ -618,35 +554,35 @@ function ProductsContent() {
     }
   }
 
-  // Get visible page buttons list
   const visiblePages = getVisiblePages(page, totalPages);
 
-  // Determine table content using normal if statements
-  let content = null;
-
-  // Specific empty state message depending on current filter
   let emptyMessage = "No products found.";
   if (searchQuery) {
-    emptyMessage = `No products found matching "${searchQuery}".`;
+    emptyMessage = `No products found matching "${searchQuery}". Try searching with different keywords.`;
   } else if (selectedCategory && selectedCategory !== "all") {
     emptyMessage = `No products found in category "${selectedCategory}".`;
   }
 
+  let content = null;
+
   if (isLoadingProducts) {
     content = (
-      <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        {searchQuery ? "Searching products..." : "Loading products..."}
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-16 text-center shadow-xs">
+        <div className="mx-auto h-9 w-9 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+        <p className="mt-4 text-sm font-medium text-slate-500">
+          {searchQuery ? "Searching products..." : "Loading products catalog..."}
+        </p>
       </div>
     );
   } else if (errorMessage) {
     content = (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 shadow-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-        <p className="font-medium">{errorMessage}</p>
-        <div className="mt-3">
+      <div className="rounded-3xl border border-rose-200 bg-rose-50/50 p-8 text-center text-sm text-rose-700 shadow-xs">
+        <p className="font-semibold">{errorMessage}</p>
+        <div className="mt-4">
           <button
             type="button"
             onClick={handleRetry}
-            className="inline-flex items-center rounded-lg border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-zinc-800"
+            className="inline-flex items-center rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 shadow-xs hover:bg-rose-50"
           >
             ↻ Retry
           </button>
@@ -655,78 +591,97 @@ function ProductsContent() {
     );
   } else {
     content = (
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        {/* Desktop Table View (hidden on mobile, visible on md and larger) */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase text-zinc-700 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-xs font-semibold uppercase tracking-wider text-slate-400">
               <tr>
-                <th className="px-6 py-4">Image</th>
-                <th className="px-6 py-4">Title</th>
+                <th className="px-6 py-4">Product</th>
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4">Rating</th>
-                <th className="px-6 py-4">Stock</th>
-                <th className="px-6 py-4 text-right min-w-[190px]">Actions</th>
+                <th className="px-6 py-4">Stock Status</th>
+                <th className="px-6 py-4 text-right min-w-[200px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <tbody className="divide-y divide-slate-100">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
                     {emptyMessage}
                   </td>
                 </tr>
               ) : (
                 products.map((product) => (
-                  <tr key={product.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                  <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-6 py-4">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={product.thumbnail}
-                        alt={product.title}
-                        className="h-12 w-12 rounded-lg object-cover bg-zinc-100 dark:bg-zinc-800"
-                      />
-                    </td>
-                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                      <Link
-                        href={`/products/${product.id}`}
-                        className="hover:underline hover:text-blue-600 dark:hover:text-blue-400"
-                      >
-                        {product.title}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 capitalize">
-                      {product.category}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                      ${product.price}
-                    </td>
-                    <td className="px-6 py-4">
-                      ⭐ {product.rating}
+                      <div className="flex items-center gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={product.thumbnail}
+                          alt={product.title}
+                          className="h-11 w-11 rounded-xl object-cover bg-slate-50 border border-slate-100 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/products/${product.id}`}
+                            className="font-semibold text-slate-900 hover:text-blue-600 line-clamp-1"
+                          >
+                            {product.title}
+                          </Link>
+                          {product.brand && (
+                            <span className="text-xs text-slate-400 font-medium">{product.brand}</span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      {product.stock}
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-700">
+                        {product.category}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-right min-w-[190px]">
+                    <td className="px-6 py-4 font-bold text-slate-900">
+                      ${product.price.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
+                        ⭐ {product.rating}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            product.stock > 10
+                              ? "bg-emerald-500"
+                              : product.stock > 0
+                              ? "bg-amber-500"
+                              : "bg-rose-500"
+                          }`}
+                        />
+                        <span className="text-slate-700">{product.stock} units</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/products/${product.id}`}
-                          className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                          className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
                         >
                           View
                         </Link>
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(product)}
-                          className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-700"
+                          className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs hover:bg-blue-100/60 transition-colors"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenDeleteModal(product)}
-                          className="inline-flex items-center rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                          className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-2xs hover:bg-rose-100/60 transition-colors"
                         >
                           Delete
                         </button>
@@ -739,10 +694,10 @@ function ProductsContent() {
           </table>
         </div>
 
-        {/* Mobile Cards View (visible on mobile, hidden on md and larger) */}
-        <div className="block md:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
+        {/* Mobile Cards View */}
+        <div className="block md:hidden divide-y divide-slate-100">
           {products.length === 0 ? (
-            <div className="p-8 text-center text-sm text-zinc-500">
+            <div className="p-8 text-center text-sm text-slate-400">
               {emptyMessage}
             </div>
           ) : (
@@ -753,46 +708,46 @@ function ProductsContent() {
                   <img
                     src={product.thumbnail}
                     alt={product.title}
-                    className="h-16 w-16 flex-shrink-0 rounded-lg object-cover bg-zinc-100 dark:bg-zinc-800"
+                    className="h-16 w-16 shrink-0 rounded-xl object-cover bg-slate-50 border border-slate-100"
                   />
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/products/${product.id}`}
-                      className="font-medium text-sm text-zinc-900 dark:text-zinc-100 hover:underline line-clamp-1"
+                      className="font-semibold text-sm text-slate-900 hover:text-blue-600 line-clamp-1"
                     >
                       {product.title}
                     </Link>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span className="capitalize">{product.category}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <span className="capitalize font-medium text-slate-600">{product.category}</span>
                       <span>•</span>
                       <span>⭐ {product.rating}</span>
                       <span>•</span>
                       <span>Stock: {product.stock}</span>
                     </div>
-                    <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                      ${product.price}
+                    <div className="mt-1.5 text-sm font-bold text-slate-900">
+                      ${product.price.toFixed(2)} USD
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <Link
                     href={`/products/${product.id}`}
-                    className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
                   >
                     View
                   </Link>
                   <button
                     type="button"
                     onClick={() => handleOpenEditModal(product)}
-                    className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-700"
+                    className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs hover:bg-blue-100/60"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => handleOpenDeleteModal(product)}
-                    className="inline-flex items-center rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                    className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-2xs hover:bg-rose-100/60"
                   >
                     Delete
                   </button>
@@ -802,21 +757,18 @@ function ProductsContent() {
           )}
         </div>
 
-        {/* Pagination controls footer */}
-        <div className="flex flex-col gap-4 border-t border-zinc-200 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+        {/* Pagination Bar */}
+        <div className="border-t border-slate-100 bg-slate-50/40 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
             <span>
-              Showing {startItem}–{endItem} of {total}
+              Showing <span className="font-semibold text-slate-800">{startItem}</span>–<span className="font-semibold text-slate-800">{endItem}</span> of <span className="font-semibold text-slate-800">{total}</span> items
             </span>
-            <div className="flex items-center gap-2">
-              <label htmlFor="limit-select" className="text-xs text-zinc-500 dark:text-zinc-400">
-                Rows per page:
-              </label>
+            <div className="flex items-center gap-1.5">
+              <span>Per page:</span>
               <select
-                id="limit-select"
                 value={limit}
                 onChange={(e) => handleLimitChange(Number(e.target.value))}
-                className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-600 shadow-2xs"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -825,12 +777,12 @@ function ProductsContent() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handlePrevPage}
               disabled={page <= 1 || isLoadingProducts}
-              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors"
             >
               Previous
             </button>
@@ -838,31 +790,24 @@ function ProductsContent() {
             {visiblePages.map((item, index) => {
               if (typeof item === "string") {
                 return (
-                  <span
-                    key={`ellipsis-${index}`}
-                    className="px-2 text-sm text-zinc-400 dark:text-zinc-500"
-                  >
-                    ...
+                  <span key={`${item}-${index}`} className="px-2 text-xs text-slate-400">
+                    …
                   </span>
                 );
               }
 
               const isCurrent = item === page;
-              let buttonStyle =
-                "rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700";
-
-              if (isCurrent) {
-                buttonStyle =
-                  "rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900";
-              }
-
               return (
                 <button
                   key={item}
                   type="button"
                   disabled={isLoadingProducts}
                   onClick={() => updateUrl(item, limit, searchQuery, selectedCategory, sortField, sortOrder)}
-                  className={buttonStyle}
+                  className={`h-8 w-8 rounded-xl text-xs font-semibold transition-all ${
+                    isCurrent
+                      ? "bg-blue-600 text-white shadow-xs shadow-blue-500/25"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs"
+                  }`}
                 >
                   {item}
                 </button>
@@ -873,7 +818,7 @@ function ProductsContent() {
               type="button"
               onClick={handleNextPage}
               disabled={page >= totalPages || isLoadingProducts}
-              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors"
             >
               Next
             </button>
@@ -883,318 +828,317 @@ function ProductsContent() {
     );
   }
 
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+          <p className="text-sm font-medium text-slate-500">Checking credentials...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1340px] mx-auto w-full space-y-6">
+      {/* Top Header: Title, Subtitle, and Primary "+ Add New Product" button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Products
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Product Catalog
           </h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Manage your store inventory and view product details.
+          <p className="text-xs text-slate-400 mt-1 font-medium">
+            Manage your store items, live inventory, and product pricing.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            + Add Product
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
-          >
-            Logout
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleOpenAddModal}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm shadow-blue-500/20 transition-all shrink-0"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add New Product
+        </button>
       </div>
 
       {/* Success Notification Banner */}
-      {successNotice ? (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
-          <span>{successNotice}</span>
-          <button
-            type="button"
-            onClick={() => setSuccessNotice("")}
-            className="ml-4 text-xs font-semibold hover:underline"
-          >
-            Dismiss
+      {successNotice && (
+        <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs text-emerald-800 shadow-2xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{successNotice}</span>
+          </div>
+          <button type="button" onClick={() => setSuccessNotice("")} className="text-emerald-700 hover:text-emerald-900 font-bold">
+            ✕
           </button>
         </div>
-      ) : null}
+      )}
 
-      {/* Search and Category Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2 flex-1 min-w-[280px] max-w-md">
-          <div className="relative flex-1 min-w-[180px]">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search products by title..."
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-100"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Search
-          </button>
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            >
-              Clear
-            </button>
-          ) : null}
-        </form>
+      {/* Filter and Search Bar Controls Card */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Search Box */}
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search products by title or keyword..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3.5 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
+              />
+            </div>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 shadow-2xs"
+              >
+                Clear
+              </button>
+            )}
+          </form>
 
-        {/* Category and Sort Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Category Dropdown */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="category-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Category:
-            </label>
-            <select
-              id="category-select"
-              value={selectedCategory}
-              onChange={handleCategoryChange}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat.slug} value={cat.slug}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Category Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <select
+                id="category-select"
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-600 focus:outline-none shadow-2xs capitalize"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.slug} value={cat.slug}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Sort Field Dropdown */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="sort-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Sort by:
-            </label>
-            <select
-              id="sort-select"
-              value={sortField}
-              onChange={handleSortChange}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-            >
-              <option value="">Default</option>
-              <option value="price">Price</option>
-              <option value="rating">Rating</option>
-              <option value="title">Title</option>
-            </select>
-          </div>
+            {/* Sort Field Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <select
+                id="sort-select"
+                value={sortField}
+                onChange={handleSortChange}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-600 focus:outline-none shadow-2xs"
+              >
+                <option value="">Sort: Default</option>
+                <option value="price">Price</option>
+                <option value="rating">Rating</option>
+                <option value="title">Title</option>
+              </select>
+            </div>
 
-          {/* Sort Order Dropdown */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="order-select" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Order:
-            </label>
-            <select
-              id="order-select"
-              value={sortOrder}
-              onChange={handleOrderChange}
-              disabled={!sortField}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
+            {/* Sort Order Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <select
+                id="order-select"
+                value={sortOrder}
+                onChange={handleOrderChange}
+                disabled={!sortField}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-600 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+              >
+                <option value="asc">Ascending ↑</option>
+                <option value="desc">Descending ↓</option>
+              </select>
+            </div>
           </div>
         </div>
+
+        {/* Notice when Category overrides Search */}
+        {selectedCategory && searchQuery && (
+          <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
+            Filtering by category <span className="font-bold capitalize">&quot;{selectedCategory}&quot;</span>. (Category takes priority over search query &quot;{searchQuery}&quot; per DummyJSON mock specs.)
+          </div>
+        )}
       </div>
 
-      {/* Informational badge when both category and search query are present */}
-      {selectedCategory && searchQuery ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-          Showing category: <span className="font-semibold capitalize">{selectedCategory}</span>.
-          (Category filter takes priority over the search term &quot;{searchQuery}&quot; due to API limitations.)
-        </div>
-      ) : null}
-
+      {/* Main Table / Cards Content */}
       {content}
 
-      {/* Add Product Modal */}
-      {isAddModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {editingProduct ? "Edit Product" : "Add New Product"}
-              </h2>
+      {/* Add / Edit Product Modal (matching screenshot aesthetic) */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl rounded-3xl bg-white p-6 sm:p-7 shadow-xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {editingProduct ? "Edit Product" : "Add New Product"}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Key info to describe and display your product.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={handleCloseAddModal}
                 disabled={isSubmitting}
-                className="text-zinc-400 hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-200"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
               >
                 ✕
               </button>
             </div>
 
-            {formApiError ? (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+            {formApiError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
                 {formApiError}
               </div>
-            ) : null}
+            )}
 
-            <form onSubmit={handleAddProductSubmit} className="mt-4 space-y-4">
-              {/* Title */}
+            <form onSubmit={handleAddProductSubmit} className="space-y-4">
               <div>
-                <label htmlFor="add-title" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Title *
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Product Name <span className="text-rose-500">*</span>
                 </label>
                 <input
-                  id="add-title"
                   type="text"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="e.g. Wireless Noise-Cancelling Headphones"
-                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  placeholder="e.g. Natural Glow Face Moisturizer"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                 />
-                {formErrors.title ? (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.title}</p>
-                ) : null}
+                {formErrors.title && (
+                  <p className="mt-1 text-xs text-rose-500">{formErrors.title}</p>
+                )}
               </div>
 
-              {/* Price & Stock Row */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="add-price" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Price ($) *
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Category <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 capitalize"
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.slug} value={cat.slug}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.category && (
+                    <p className="mt-1 text-xs text-rose-500">{formErrors.category}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Price ($ USD) <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    id="add-price"
                     type="number"
                     step="0.01"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
                     placeholder="e.g. 29.99"
-                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                   />
-                  {formErrors.price ? (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.price}</p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <label htmlFor="add-stock" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Stock Units *
-                  </label>
-                  <input
-                    id="add-stock"
-                    type="number"
-                    step="1"
-                    value={formStock}
-                    onChange={(e) => setFormStock(e.target.value)}
-                    placeholder="e.g. 50"
-                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                  />
-                  {formErrors.stock ? (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.stock}</p>
-                  ) : null}
+                  {formErrors.price && (
+                    <p className="mt-1 text-xs text-rose-500">{formErrors.price}</p>
+                  )}
                 </div>
               </div>
 
-              {/* Category */}
               <div>
-                <label htmlFor="add-category" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Category *
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Stock Units <span className="text-rose-500">*</span>
                 </label>
-                <select
-                  id="add-category"
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.category ? (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.category}</p>
-                ) : null}
+                <input
+                  type="number"
+                  step="1"
+                  value={formStock}
+                  onChange={(e) => setFormStock(e.target.value)}
+                  placeholder="e.g. 100"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                />
+                {formErrors.stock && (
+                  <p className="mt-1 text-xs text-rose-500">{formErrors.stock}</p>
+                )}
               </div>
 
-              {/* Description */}
               <div>
-                <label htmlFor="add-description" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Description *
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Description <span className="text-rose-500">*</span>
                 </label>
                 <textarea
-                  id="add-description"
                   rows={3}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Provide a detailed description of the product..."
-                  className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  placeholder="Write a short description highlighting key benefits and features"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 leading-relaxed"
                 />
-                {formErrors.description ? (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.description}</p>
-                ) : null}
+                {formErrors.description && (
+                  <p className="mt-1 text-xs text-rose-500">{formErrors.description}</p>
+                )}
               </div>
 
-              {/* Actions Footer */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseAddModal}
                   disabled={isSubmitting}
-                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancel
+                  Save Draft / Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 shadow-sm shadow-blue-500/20"
                 >
-                  {isSubmitting ? "Saving..." : editingProduct ? "Update Product" : "Save Product"}
+                  {isSubmitting ? "Publishing..." : editingProduct ? "Save Changes" : "Publish"}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Delete Confirmation Modal */}
-      {productToDelete ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              Delete Product
-            </h3>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Are you sure you want to delete <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{productToDelete.title}&quot;</span>? This will remove it from the list.
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl border border-slate-100 text-center space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Delete Product</h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to delete <span className="font-semibold text-slate-700">&quot;{productToDelete.title}&quot;</span>?
             </p>
-
-            {deleteApiError ? (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+            {deleteApiError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2 text-xs text-rose-700">
                 {deleteApiError}
               </div>
-            ) : null}
-
-            <div className="mt-6 flex items-center justify-end gap-3">
+            )}
+            <div className="flex items-center justify-center gap-2 pt-3">
               <button
                 type="button"
                 onClick={handleCloseDeleteModal}
                 disabled={isDeleting}
-                className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -1202,14 +1146,14 @@ function ProductsContent() {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 shadow-sm"
               >
-                {isDeleting ? "Deleting..." : "Delete Product"}
+                {isDeleting ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1218,8 +1162,8 @@ export default function ProductsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading products...</p>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
         </div>
       }
     >

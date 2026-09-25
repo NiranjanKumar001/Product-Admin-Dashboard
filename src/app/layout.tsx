@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Product Admin Dashboard",
-  description: "Product Admin Dashboard application",
+  description: "Modern SaaS Product Admin Dashboard",
 };
 
 export default function RootLayout({
@@ -28,13 +28,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <Navbar />
-        <main className="flex-1 w-full max-w-6xl mx-auto p-6">
+      <body className="h-full bg-[#f4f6fa] text-slate-800 flex flex-col md:flex-row overflow-x-hidden font-sans">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto">
           {children}
-        </main>
+        </div>
       </body>
     </html>
   );
 }
-
