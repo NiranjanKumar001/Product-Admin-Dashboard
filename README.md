@@ -145,6 +145,4 @@ When Axios throws a cancelled error (`axios.isCancel(err)`), the catch block ign
 
 AI pair programming assistance was utilized during development for:
 - Accelerating boilerplate setup and TypeScript interface definitions.
-- Implementing robust client-side validation logic and pagination windowing math.
-- Automated end-to-end browser subagent verification across desktop and mobile viewports.
 - Writing thorough regression tests and documentation.
