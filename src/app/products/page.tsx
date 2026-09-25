@@ -43,6 +43,16 @@ export default function ProductsPage() {
     return null;
   }
 
+  function handleLogout() {
+    // Remove saved authentication data
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Redirect to the login page
+    router.push("/login");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -54,6 +64,14 @@ export default function ProductsPage() {
             Manage your store inventory and view product details.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+        >
+          Logout
+        </button>
       </div>
 
       <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
