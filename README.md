@@ -106,7 +106,7 @@ Upon successful login, JWT tokens are securely stored in client `localStorage` a
 10. **Loading, Empty, & Error Recovery States**
     - Contextual loading indicators ("Searching products...", "Loading products...", "Saving...", "Deleting...").
     - Explicit empty states for zero search results, empty categories, and general empty lists.
-    - Inline error handling with a **"↻ Retry"** button that re-fetches products without reloading the browser.
+    - Inline error handling with a **"Retry"** button that re-fetches products without reloading the browser.
 
 ---
 
