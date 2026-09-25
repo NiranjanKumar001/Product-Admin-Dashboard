@@ -5,9 +5,31 @@ import { useState } from "react";
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Reset previous error message before validating
+    setErrorMessage("");
+
+    // Validation rule 1: Username cannot be blank
+    if (username.trim() === "") {
+      setErrorMessage("Please enter your username.");
+      return;
+    }
+
+    // Validation rule 2: Password cannot be blank
+    if (password.trim() === "") {
+      setErrorMessage("Please enter your password.");
+      return;
+    }
+
+    // Validation rule 3: Password minimum length
+    if (password.length < 4) {
+      setErrorMessage("Password must be at least 4 characters long.");
+      return;
+    }
   }
 
   return (
@@ -25,7 +47,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        {errorMessage ? (
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+            {errorMessage}
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+
           <div>
             <label
               htmlFor="username"
