@@ -9,10 +9,15 @@ export default function ProductsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // State for products, loading, and error handling
+  // Products and status state
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     // Check if the user has an authentication token in localStorage
@@ -44,8 +49,11 @@ export default function ProductsPage() {
       setErrorMessage("");
 
       try {
-        const data = await getProducts();
+        // Calculate how many items to skip based on current page and limit
+        const calculatedSkip = (page - 1) * limit;
+        const data = await getProducts(limit, calculatedSkip);
         setProducts(data.products);
+        setTotal(data.total);
       } catch {
         setErrorMessage("Failed to load products. Please try again.");
       } finally {
@@ -54,7 +62,7 @@ export default function ProductsPage() {
     }
 
     loadProducts();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, page, limit]);
 
   // While checking if a token exists, display a simple loading message
   if (isCheckingAuth) {
@@ -80,6 +88,42 @@ export default function ProductsPage() {
 
     // Redirect to the login page
     router.push("/login");
+  }
+
+  // Pagination navigation helpers
+  let totalPages = Math.ceil(total / limit);
+  if (totalPages < 1) {
+    totalPages = 1;
+  }
+
+  function handlePrevPage() {
+    if (page > 1) {
+      setPage(page - 1);
+    }
+  }
+
+  function handleNextPage() {
+    if (page < totalPages) {
+      setPage(page + 1);
+    }
+  }
+
+  function handleLimitChange(newLimit: number) {
+    setLimit(newLimit);
+    setPage(1); // Return to page 1 when page size changes
+  }
+
+  // Calculate "Showing X–Y of Z" values
+  const currentSkip = (page - 1) * limit;
+  let startItem = 0;
+  let endItem = 0;
+
+  if (total > 0) {
+    startItem = currentSkip + 1;
+    endItem = currentSkip + products.length;
+    if (endItem > total) {
+      endItem = total;
+    }
   }
 
   // Determine what to display using normal if statements
@@ -142,6 +186,54 @@ export default function ProductsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination controls footer */}
+        <div className="flex flex-col gap-4 border-t border-zinc-200 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+            <span>
+              Showing {startItem}–{endItem} of {total}
+            </span>
+            <div className="flex items-center gap-2">
+              <label htmlFor="limit-select" className="text-xs text-zinc-500 dark:text-zinc-400">
+                Rows per page:
+              </label>
+              <select
+                id="limit-select"
+                value={limit}
+                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePrevPage}
+                disabled={page <= 1 || isLoadingProducts}
+                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={handleNextPage}
+                disabled={page >= totalPages || isLoadingProducts}
+                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
