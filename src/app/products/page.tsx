@@ -642,7 +642,7 @@ function ProductsContent() {
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4">Rating</th>
                 <th className="px-6 py-4">Stock</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 text-right min-w-[190px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -683,7 +683,7 @@ function ProductsContent() {
                     <td className="px-6 py-4">
                       {product.stock}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right min-w-[190px]">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/products/${product.id}`}
