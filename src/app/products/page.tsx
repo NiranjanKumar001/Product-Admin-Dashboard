@@ -4,6 +4,58 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getProducts, Product } from "@/services/products";
 
+// Helper function to calculate which page numbers should be visible
+function getVisiblePages(currentPage: number, totalPages: number) {
+  // If there are 7 or fewer pages, show all page numbers
+  if (totalPages <= 7) {
+    const pages: (number | string)[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
+  const pages: (number | string)[] = [];
+
+  // Always show the first page
+  pages.push(1);
+
+  // If current page is further in, show an ellipsis
+  if (currentPage > 3) {
+    pages.push("ellipsis-start");
+  }
+
+  // Calculate the window of numbers around the current page
+  let start = currentPage - 1;
+  let end = currentPage + 1;
+
+  if (start < 2) {
+    start = 2;
+    end = 4;
+  }
+
+  if (end > totalPages - 1) {
+    end = totalPages - 1;
+    start = totalPages - 3;
+  }
+
+  for (let i = start; i <= end; i++) {
+    if (i > 1 && i < totalPages) {
+      pages.push(i);
+    }
+  }
+
+  // If there are more pages before the last page, show an ellipsis
+  if (currentPage < totalPages - 2) {
+    pages.push("ellipsis-end");
+  }
+
+  // Always show the last page
+  pages.push(totalPages);
+
+  return pages;
+}
+
 function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,6 +197,9 @@ function ProductsContent() {
     }
   }
 
+  // Get visible page buttons list
+  const visiblePages = getVisiblePages(page, totalPages);
+
   // Determine table content using normal if statements
   let content = null;
 
@@ -238,28 +293,58 @@ function ProductsContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              Page {page} of {totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handlePrevPage}
-                disabled={page <= 1 || isLoadingProducts}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={handleNextPage}
-                disabled={page >= totalPages || isLoadingProducts}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Next
-              </button>
-            </div>
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={handlePrevPage}
+              disabled={page <= 1 || isLoadingProducts}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              Previous
+            </button>
+
+            {visiblePages.map((item, index) => {
+              if (typeof item === "string") {
+                return (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-2 text-sm text-zinc-400 dark:text-zinc-500"
+                  >
+                    ...
+                  </span>
+                );
+              }
+
+              const isCurrent = item === page;
+              let buttonStyle =
+                "rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700";
+
+              if (isCurrent) {
+                buttonStyle =
+                  "rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900";
+              }
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  disabled={isLoadingProducts}
+                  onClick={() => updateUrl(item, limit)}
+                  className={buttonStyle}
+                >
+                  {item}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={handleNextPage}
+              disabled={page >= totalPages || isLoadingProducts}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
