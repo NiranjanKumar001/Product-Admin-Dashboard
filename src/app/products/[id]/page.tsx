@@ -539,7 +539,7 @@ export default function ProductDetailPage() {
                         Brand <span className="text-rose-500">*</span>
                       </label>
                       <div className="mt-1.5 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-700 font-medium">
-                        {product.brand || "Independent Brand"}
+                        {product.brand || "None"}
                       </div>
                     </div>
                   </div>
@@ -551,8 +551,7 @@ export default function ProductDetailPage() {
                         Category <span className="text-rose-500">*</span>
                       </label>
                       <div className="mt-1.5 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-700 font-medium capitalize">
-                        <span>{product.category}</span>
-                        <span className="text-xs text-slate-400">▾</span>
+                        <span>{product.category || "None"}</span>
                       </div>
                     </div>
 

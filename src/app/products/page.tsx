@@ -632,15 +632,15 @@ function ProductsContent() {
                           >
                             {product.title}
                           </Link>
-                          {product.brand && (
-                            <span className="text-xs text-slate-400 font-medium">{product.brand}</span>
-                          )}
+                          <span className="text-xs text-slate-400 font-medium block">
+                            {product.brand || "None"}
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-700">
-                        {product.category}
+                        {product.category || "None"}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-slate-900">
@@ -663,7 +663,9 @@ function ProductsContent() {
                               : "bg-rose-500"
                           }`}
                         />
-                        <span className="text-slate-700">{product.stock} units</span>
+                        <span className="text-slate-700">
+                          {product.stock > 0 ? `${product.stock} units` : "Out of stock"}
+                        </span>
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -721,14 +723,16 @@ function ProductsContent() {
                       {product.title}
                     </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span className="capitalize font-medium text-slate-600">{product.category}</span>
+                      <span className="capitalize font-medium text-slate-600">{product.category || "None"}</span>
+                      <span>•</span>
+                      <span className="text-slate-500 font-medium">{product.brand || "None"}</span>
                       <span>•</span>
                       <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
                         <StarIcon className="w-3.5 h-3.5 text-amber-400" />
-                        {product.rating}
+                        {product.rating ?? "None"}
                       </span>
                       <span>•</span>
-                      <span>Stock: {product.stock}</span>
+                      <span>Stock: {product.stock > 0 ? `${product.stock} units` : "Out of stock"}</span>
                     </div>
                     <div className="mt-1.5 text-sm font-bold text-slate-900">
                       ${product.price.toFixed(2)} USD
