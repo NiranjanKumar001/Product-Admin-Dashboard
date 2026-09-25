@@ -99,6 +99,45 @@ function ProductsContent() {
     limit = 10;
   }
 
+  // Helper function to update search query, page, and limit in the URL
+  function updateUrl(newPage: number, newLimit: number, newQuery: string = searchQuery) {
+    const params = new URLSearchParams();
+    if (newQuery) {
+      params.set("q", newQuery);
+    }
+    params.set("page", String(newPage));
+    params.set("limit", String(newLimit));
+    router.push(`/products?${params.toString()}`);
+  }
+
+  // Debounce search input: wait 450ms after user stops typing before updating the URL
+  useEffect(() => {
+    // If the current input matches what is already in the URL, do nothing
+    if (searchInput.trim() === searchQuery) {
+      return;
+    }
+
+    // Wait 450ms after the user stops typing
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      const trimmed = searchInput.trim();
+
+      if (trimmed) {
+        params.set("q", trimmed);
+      }
+      // When the search query changes, always reset to page 1
+      params.set("page", "1");
+      params.set("limit", String(limit));
+
+      router.push(`/products?${params.toString()}`);
+    }, 450);
+
+    // Cleanup: cancel the previous timer if the user types again within 450ms
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchInput, searchQuery, limit, router]);
+
   // Verify authentication on mount
   useEffect(() => {
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -170,17 +209,6 @@ function ProductsContent() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.push("/login");
-  }
-
-  // Helper function to update search query, page, and limit in the URL
-  function updateUrl(newPage: number, newLimit: number, newQuery: string = searchQuery) {
-    const params = new URLSearchParams();
-    if (newQuery) {
-      params.set("q", newQuery);
-    }
-    params.set("page", String(newPage));
-    params.set("limit", String(newLimit));
-    router.push(`/products?${params.toString()}`);
   }
 
   // Search submission and clear handlers
